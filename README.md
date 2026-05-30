@@ -20,10 +20,10 @@ A Spanish-speaking parent in Bakersfield gets official mail she can't fully read
 ## Run it
 ```bash
 npm install
-cp .env.example .env.local   # add your ANTHROPIC_API_KEY (optional — mock works without it)
+cp .env.example .env.local   # add a free GEMINI_API_KEY (or skip it — mock data works without any key)
 npm run dev                  # http://localhost:3000
 ```
-> No API key? The app returns realistic **mock data** so you can build the whole UI offline.
+> No API key? The app returns realistic **mock data** so you can build the whole UI offline. Free Gemini key: https://aistudio.google.com/apikey
 
 ## For the team
 👉 **Read [`TEAM.md`](./TEAM.md) first.** It has the roles, the data contract, the git rules, and a one-page job sheet for each person in [`tasks/`](./tasks).

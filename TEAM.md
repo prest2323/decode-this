@@ -8,10 +8,10 @@ We are 4 people, each driving an AI. **Read your one-page job sheet in [`tasks/`
 
 | # | Person + AI | Role | Owns these files ONLY |
 |---|---|---|---|
-| 1 | **You + Claude Code** (this one) | **Lead / Backend / Integrator** | `lib/types.ts`, `lib/prompt.ts`, `lib/mock.ts`, `app/api/decode/route.ts`, `app/page.tsx`, deploy, all merges |
-| 2 | **Teammate + Claude Code** | **Core UI (Decode side)** | `components/ResultCard.tsx`, `components/LanguageToggle.tsx`, `app/globals.css` |
-| 3 | **Teammate + Antigravity (Gemini)** | **Input & Voice** | `components/Uploader.tsx`, `components/ReadAloud.tsx`, `components/MicInput.tsx` |
-| 4 | **Teammate + Antigravity (Gemini)** | **Express UI + Demo + Pitch** | `components/ExpressInput.tsx`, `components/ExpressResult.tsx`, `demo/`, `PITCH.md` |
+| 1 | **Preston + Claude Code** | **Lead / Backend / Integrator** | `lib/types.ts`, `lib/gemini.ts`, `app/api/decode/route.ts`, `app/page.tsx`, all merges + deploy |
+| 2 | **MK + Claude Code** | **Backend #2 / Prompts / Deploy** | `lib/prompt.ts`, `lib/mock.ts`, Vercel deploy, QA |
+| 3 | **Sawyer + Antigravity (Gemini)** | **Decode UI + Look & Feel** | `components/ResultCard.tsx`, `components/LanguageToggle.tsx`, `components/Uploader.tsx`, `components/ReadAloud.tsx`, `app/globals.css` |
+| 4 | **Aiden + Antigravity (Gemini)** | **Express UI + Demo + Pitch** | `components/ExpressInput.tsx`, `components/ExpressResult.tsx`, `components/MicInput.tsx`, `demo/`, `PITCH.md` |
 
 **The golden rule: only edit files in YOUR row.** If you need a change to someone else's file (especially `lib/types.ts`), ask the Lead in chat. The Lead owns the contract.
 

@@ -32,10 +32,10 @@ Never work on `main`. Never commit to `main`.
 ## 4. Find your job sheet
 | You are | Open |
 |---|---|
-| Lead (you + Claude) | `tasks/01-lead.md` |
-| Core UI (Claude) | `tasks/02-claude-ui.md` |
-| Input & Voice (Gemini) | `tasks/03-gemini-input.md` |
-| Express + Demo (Gemini) | `tasks/04-gemini-express-demo.md` |
+| Preston — Lead / Backend (Claude) | `tasks/01-lead.md` |
+| MK — Backend (Claude) | `tasks/mk-backend.md` |
+| Sawyer — Decode UI (Gemini) | `tasks/sawyer.md` |
+| Aiden — Express UI + Demo (Gemini) | `tasks/aiden.md` |
 
 ## 5. The one rule that saves the day
 **Only edit the files in your row of the table in `TEAM.md`.** When in doubt, ask the Lead in the group chat before editing a shared file.

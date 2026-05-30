@@ -7,11 +7,20 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { ApiRequest, ApiResponse, DecodeResult, ExpressResult } from "@/lib/types";
 import { MOCK_DECODE, MOCK_EXPRESS } from "@/lib/mock";
 import { DECODE_SYSTEM, EXPRESS_SYSTEM, DECODE_TOOL, EXPRESS_TOOL } from "@/lib/prompt";
+import { decodeWithGemini, expressWithGemini } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MODEL = process.env.MODEL || "claude-sonnet-4-6";
+
+// Provider is chosen by which key is present:
+//   ANTHROPIC_API_KEY -> Claude   |   GEMINI_API_KEY -> Gemini (free)   |   neither -> mock
+function provider(): "anthropic" | "gemini" | "mock" {
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.GEMINI_API_KEY) return "gemini";
+  return "mock";
+}
 
 export async function POST(req: NextRequest) {
   let body: ApiRequest;
@@ -21,22 +30,27 @@ export async function POST(req: NextRequest) {
     return json({ ok: false, error: "Invalid JSON." });
   }
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  // No key? Return mock so teammates can develop the UI without secrets.
-  if (!key) {
+  const which = provider();
+
+  // No key anywhere? Return mock so teammates can build the UI without secrets.
+  if (which === "mock") {
     if (body.mode === "express") return json({ ok: true, mode: "express", result: MOCK_EXPRESS });
     return json({ ok: true, mode: "decode", result: MOCK_DECODE });
   }
 
-  const client = new Anthropic({ apiKey: key });
-
   try {
     if (body.mode === "decode") {
-      const result = await runDecode(client, body.image);
+      const result =
+        which === "gemini"
+          ? await decodeWithGemini(body.image)
+          : await runDecode(anthropic(), body.image);
       return json({ ok: true, mode: "decode", result });
     }
     if (body.mode === "express") {
-      const result = await runExpress(client, body.text, body.lang, body.audience);
+      const result =
+        which === "gemini"
+          ? await expressWithGemini(body.text, body.lang, body.audience)
+          : await runExpress(anthropic(), body.text, body.lang, body.audience);
       return json({ ok: true, mode: "express", result });
     }
     return json({ ok: false, error: "Unknown mode." });
@@ -44,6 +58,10 @@ export async function POST(req: NextRequest) {
     console.error(err);
     return json({ ok: false, error: "Decode failed. Try again." });
   }
+}
+
+function anthropic(): Anthropic {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY as string });
 }
 
 async function runDecode(client: Anthropic, dataUrl: string): Promise<DecodeResult> {
