@@ -94,36 +94,44 @@ export default function DocCanvas() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* 5. Canvas Zoom/Fit Toolbar */}
-      <div className="mb-4 flex items-center justify-center gap-3 border-b border-slate-100 pb-3">
-        <button
-          type="button"
-          onClick={() => setScale((s) => Math.max(0.6, s - 0.1))}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm transition"
-        >
-          Zoom −
-        </button>
-        <span className="text-xs font-semibold text-slate-500 min-w-[50px] text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <button
-          type="button"
-          onClick={() => setScale((s) => Math.min(1.8, s + 0.1))}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm transition"
-        >
-          Zoom +
-        </button>
-        <button
-          type="button"
-          onClick={() => setScale(1.0)}
-          className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm transition"
-        >
-          Fit
-        </button>
+      {/* 5. Floating Glassmorphic Canvas Controls Toolbar */}
+      <div className="flex items-center justify-center py-4 z-20">
+        <div className="flex items-center gap-3 bg-white/75 backdrop-blur-md border border-slate-200/50 px-6 py-2 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-white/90">
+          <button
+            type="button"
+            onClick={() => setScale((s) => Math.max(0.6, s - 0.1))}
+            className="w-8 h-8 rounded-full border border-slate-250 bg-white flex items-center justify-center text-slate-700 hover:text-brand hover:border-brand active:bg-slate-100 transition-all font-bold shadow-sm select-none"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="text-xs font-extrabold text-slate-600 min-w-[45px] text-center select-none font-mono">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={() => setScale((s) => Math.min(1.8, s + 0.1))}
+            className="w-8 h-8 rounded-full border border-slate-250 bg-white flex items-center justify-center text-slate-700 hover:text-brand hover:border-brand active:bg-slate-100 transition-all font-bold shadow-sm select-none"
+            title="Zoom In"
+          >
+            +
+          </button>
+          
+          {/* Vertical divider */}
+          <div className="w-[1px] h-4 bg-slate-350/50 mx-1" />
+
+          <button
+            type="button"
+            onClick={() => setScale(1.0)}
+            className="rounded-full border border-slate-250 bg-white px-4 py-1 text-xs font-bold text-slate-700 hover:text-brand hover:border-brand active:bg-slate-100 shadow-sm transition-all select-none"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       {/* 6. Document Scroll & Render View */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="flex-1 overflow-y-auto px-4 py-2 bg-slate-50/30 rounded-2xl border border-slate-100/50">
         <div className="relative mx-auto w-full flex flex-col items-center">
           {doc.pages.map((p) => {
             const fields = doc.requirements
@@ -135,7 +143,7 @@ export default function DocCanvas() {
               <div
                 id={`page-box-${p.index}`}
                 key={p.index}
-                className="relative mb-8 w-full overflow-hidden rounded-xl border border-slate-200 shadow-md bg-white transition-all duration-300"
+                className="relative mb-8 w-full overflow-hidden rounded-2xl border border-slate-200/60 shadow-lg bg-white transition-all duration-500 hover:shadow-xl"
                 style={{
                   maxWidth: `${768 * scale}px`,
                   aspectRatio: `${p.width} / ${p.height}`,

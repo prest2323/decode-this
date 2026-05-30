@@ -77,19 +77,22 @@ export default function Uploader() {
 
   return (
     <div className="mx-auto w-full max-w-xl text-center px-4">
-      {/* Dashed Drag & Drop Box */}
+      {/* Dashed Drag & Drop Box with Ambient Glow */}
       <div
         onDragEnter={handleDrag}
         onDragOver={handleDrag}
         onDragLeave={handleDrag}
         onDrop={handleDrop}
         onClick={() => !loading && inputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
+        className={`group relative flex flex-col items-center justify-center gap-6 rounded-3xl border-2 p-12 text-center cursor-pointer transition-all duration-500 overflow-hidden ${
           dragActive
-            ? "border-brand bg-brand-soft/50 scale-[1.01] shadow-md"
-            : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50/50"
-        } ${loading ? "pointer-events-none opacity-60" : ""}`}
+            ? "border-brand bg-gradient-to-b from-brand-soft/70 to-brand-soft/30 scale-[1.02] shadow-2xl ring-4 ring-brand/10"
+            : "border-slate-200 bg-white/70 backdrop-blur-md shadow-lg hover:border-brand/40 hover:bg-slate-50/50 hover:shadow-xl"
+        } ${loading ? "pointer-events-none opacity-85" : ""}`}
       >
+        {/* Decorative ambient background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-brand-soft/10 via-transparent to-brand-soft/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
         <input
           ref={inputRef}
           type="file"
@@ -103,43 +106,68 @@ export default function Uploader() {
         />
 
         {loading ? (
-          // Spinner Loading State
-          <div className="flex flex-col items-center gap-3 py-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand border-t-transparent" />
-            <p className="text-base font-bold text-slate-800 animate-pulse">
-              AI Analyzing your document…
-            </p>
-            <p className="text-xs text-slate-500">
-              Breaking down complex clauses & requirements
-            </p>
-          </div>
-        ) : (
-          // Idle Upload State
-          <>
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-              📂
+          // Premium Spinner Loading State
+          <div className="flex flex-col items-center gap-4 py-4 z-10">
+            <div className="relative flex items-center justify-center">
+              {/* Outer pulsing ring */}
+              <div className="absolute h-14 w-14 rounded-full border-4 border-brand/20 animate-ping" />
+              {/* Inner crisp spinner */}
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-brand border-t-transparent shadow-md" />
             </div>
             <div>
-              <p className="text-base font-bold text-slate-800">
-                📷 Take a photo / Upload your document
+              <p className="text-lg font-black text-slate-800 animate-pulse tracking-tight">
+                Analyzing document with AI…
               </p>
-              <p className="mt-1 text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
-                Drop your PDF or image here, or tap to browse. Works with mobile cameras.
+              <p className="mt-1 text-xs font-medium text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                Mapping fields, extracting compliance targets, and building your step-by-step roadmap.
               </p>
             </div>
-          </>
+          </div>
+        ) : (
+          // Premium Idle Upload State
+          <div className="flex flex-col items-center gap-4 z-10">
+            {/* Glowing Icon Folder Wrapper */}
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 flex items-center justify-center text-4xl shadow-inner group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-md transition-all duration-500 border border-slate-200/50">
+              <span className="group-hover:animate-bounce select-none">📂</span>
+              {/* Soft decorative shadow below folder */}
+              <div className="absolute -bottom-1 w-10 h-1 bg-slate-300/40 rounded-full blur-sm" />
+            </div>
+            
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-extrabold text-slate-800 tracking-tight leading-none">
+                📷 Take a photo / Upload a document
+              </h3>
+              <p className="text-sm font-medium text-slate-500 max-w-sm mx-auto leading-relaxed">
+                Drag & drop your PDF or image here, or tap to browse. Fits rear mobile cameras perfectly.
+              </p>
+            </div>
+            {/* Tiny file type visual chips */}
+            <div className="flex gap-2 mt-1">
+              {["PDF", "PNG", "JPEG"].map((ext) => (
+                <span
+                  key={ext}
+                  className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-400 bg-slate-100 rounded-md border border-slate-200/30"
+                >
+                  {ext}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Error Message */}
+      {/* Modern Redesigned Error Message */}
       {error && (
-        <div className="mt-4 rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-600 flex items-center gap-2 text-left animate-fadeIn">
-          <span className="text-base">⚠️</span>
-          <span>{error}</span>
+        <div className="mt-5 rounded-2xl bg-red-50/70 backdrop-blur-sm border border-red-100 p-4 text-sm text-red-600 flex items-start gap-3 text-left animate-fadeIn shadow-sm">
+          <span className="text-lg select-none">🚩</span>
+          <div className="space-y-0.5">
+            <p className="font-bold text-red-700">Analysis stopped</p>
+            <p className="text-red-600/90 leading-relaxed font-medium">{error}</p>
+          </div>
         </div>
       )}
 
-      {/* Mock Document Fallback */}
+      {/* Hero Mock Document Sample Button */}
       <button
         type="button"
         onClick={() => {
@@ -149,9 +177,10 @@ export default function Uploader() {
           loadDoc(MOCK_DOC);
         }}
         disabled={loading}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-800 hover:shadow-lg active:scale-95 transition-all disabled:opacity-50"
+        className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 px-7 py-3.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-850 hover:to-slate-750 active:scale-95 transition-all duration-300 disabled:opacity-50 border border-white/5"
       >
-        ✨ Try the SBA 7(a) loan application sample
+        <span>✨</span>
+        <span>Try the SBA 7(a) loan application sample</span>
       </button>
     </div>
   );
