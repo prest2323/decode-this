@@ -139,6 +139,13 @@ export default function DocCanvas() {
       ? active.fields.filter((f) => f.rect.page === idx).map((f) => f.rect)
       : [];
 
+  // Zoom + pan to focus the active step's box(es). Only the document layer is
+  // transformed; the GuideBox stays un-zoomed + clickable. Animates between steps.
+  const focusRect = active && active.spotlight && active.spotlight.page === idx ? active.spotlight : null;
+  const zoom = focusRect ? 1.3 : 1;
+  const originX = focusRect ? (focusRect.x + focusRect.w / 2) * 100 : 50;
+  const originY = focusRect ? (focusRect.y + focusRect.h / 2) * 100 : 50;
+
   return (
     <div className="flex h-full flex-col">
       {pageCount > 1 && (
@@ -167,28 +174,35 @@ export default function DocCanvas() {
 
       <div className="flex flex-1 items-start justify-center overflow-auto">
         <div
-          className="relative w-full max-w-[640px] rounded-lg border border-slate-300 shadow-sm"
+          className="relative w-full max-w-[640px] overflow-hidden rounded-lg border border-slate-300 shadow-sm"
           style={{ aspectRatio: `${width} / ${height}` }}
         >
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image}
-              alt={`Page ${idx + 1}`}
-              draggable={false}
-              className="absolute inset-0 h-full w-full select-none rounded-lg"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50 text-sm text-slate-400">
-              Rendering your document…
-            </div>
-          )}
-          {fields.map((f) => (
-            <FieldOverlay key={f.id} field={f} />
-          ))}
-          <Spotlight rects={holes} />
-          {/* The guide-text card (Aiden's) lives in this same page box so its
-              placement aligns with the spotlight and never covers the field. */}
+          {/* Document layer: zoom/pan to focus the active box. Inputs + spotlight
+              ride along so they stay aligned at any zoom. */}
+          <div
+            className="absolute inset-0 transition-transform duration-500 ease-out"
+            style={{ transform: `scale(${zoom})`, transformOrigin: `${originX}% ${originY}%` }}
+          >
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={`Page ${idx + 1}`}
+                draggable={false}
+                className="absolute inset-0 h-full w-full select-none"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-sm text-slate-400">
+                Rendering your document…
+              </div>
+            )}
+            {fields.map((f) => (
+              <FieldOverlay key={f.id} field={f} />
+            ))}
+            <Spotlight rects={holes} />
+          </div>
+          {/* The guide-text card (Aiden's) stays un-zoomed + clickable, placed over
+              the page box so its Back/Next buttons are never clipped by the zoom. */}
           <GuideBox />
         </div>
       </div>
