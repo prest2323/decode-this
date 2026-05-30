@@ -1,10 +1,11 @@
 "use client";
-// DocCanvas — renders the active page + the editable field overlays + spotlight
-// + the focused guide card. For the MOCK it draws page.image (an SVG data URL);
-// for a real uploaded PDF it renders each page with pdfjs-dist to a canvas
-// (worker served from /public) so the crisp real form shows and the NORMALIZED
-// rects overlay it exactly. Pages render progressively; the render is keyed by
-// the doc id so a stale render is ignored once a new doc loads.
+// DocCanvas — owned by Sawyer (transferred to Michael for the PDF-render job).
+// Renders the active page and stacks the editable field overlays + spotlight on
+// top. For the MOCK it draws page.image (an SVG data URL). For a real uploaded
+// PDF it renders each page with pdfjs-dist to a canvas (worker served from
+// /public) so the crisp real form shows and the NORMALIZED rects overlay it
+// exactly. Pages render progressively — the first appears, the rest fill in. The
+// render is keyed by the doc id, so a stale render is ignored once a new doc loads.
 import { useEffect, useState } from "react";
 import { useDoc } from "@/lib/store";
 import FieldOverlay from "@/components/FieldOverlay";
@@ -23,6 +24,42 @@ interface PdfRender {
   pages: Record<number, RenderedPage>;
 }
 
+// pdfjs-dist v6 calls Map.prototype.getOrInsertComputed / getOrInsert (the TC39
+// "upsert" proposal) during render — methods browsers don't ship yet, so render
+// throws on PDFs with optional content. Polyfill them (idempotent, non-enumerable
+// like the native methods) before we touch pdfjs.
+function installPdfPolyfills(): void {
+  const proto = Map.prototype as unknown as {
+    getOrInsertComputed?: unknown;
+    getOrInsert?: unknown;
+  };
+  if (typeof proto.getOrInsertComputed !== "function") {
+    Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+      value: function <K, V>(this: Map<K, V>, key: K, compute: (k: K) => V): V {
+        if (this.has(key)) return this.get(key) as V;
+        const v = compute(key);
+        this.set(key, v);
+        return v;
+      },
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+  if (typeof proto.getOrInsert !== "function") {
+    Object.defineProperty(Map.prototype, "getOrInsert", {
+      value: function <K, V>(this: Map<K, V>, key: K, value: V): V {
+        if (this.has(key)) return this.get(key) as V;
+        this.set(key, value);
+        return value;
+      },
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+}
+
 export default function DocCanvas() {
   const { doc, active } = useDoc();
   const [page, setPage] = useState(0);
@@ -38,10 +75,14 @@ export default function DocCanvas() {
   const docId = doc?.id ?? null;
   useEffect(() => {
     const up = getUploadedFile();
-    if (!docId || !up || up.mime !== "application/pdf") return;
+    // Don't paint the uploaded PDF onto the MOCK fallback (id "mock_sba_7a"): its
+    // overlays are the mock's, not this doc's. If live extraction fails (e.g. API
+    // quota), we show the coherent mock instead of the upload with wrong boxes.
+    if (!docId || docId === "mock_sba_7a" || !up || up.mime !== "application/pdf") return;
     let cancelled = false;
     (async () => {
       try {
+        installPdfPolyfills();
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -86,12 +127,28 @@ export default function DocCanvas() {
   const idx = Math.max(0, Math.min(page, pageCount - 1));
   const fallbackPg = doc.pages[idx] ?? doc.pages[0] ?? null;
   const rp = usingPdf ? pdf.pages[idx] : null;
-  const image = usingPdf ? (rp?.image ?? "") : (fallbackPg?.image ?? "");
-  const width = usingPdf ? (rp?.width ?? 850) : (fallbackPg?.width ?? 850);
-  const height = usingPdf ? (rp?.height ?? 1100) : (fallbackPg?.height ?? 1100);
+  const image = usingPdf ? rp?.image ?? "" : fallbackPg?.image ?? "";
+  const width = usingPdf ? rp?.width ?? 850 : fallbackPg?.width ?? 850;
+  const height = usingPdf ? rp?.height ?? 1100 : fallbackPg?.height ?? 1100;
 
   const fields = doc.requirements.flatMap((r) => r.fields).filter((f) => f.rect.page === idx);
-  const spot = active?.spotlight && active.spotlight.page === idx ? active.spotlight : null;
+  // Per-box spotlight: cut a hole over each active field on this page (not the
+  // group's bounding box, which would also light up the labels between boxes).
+  const holes =
+    active && active.spotlight && active.spotlight.page === idx
+      ? active.fields.filter((f) => f.rect.page === idx).map((f) => f.rect)
+      : [];
+
+  // Zoom + pan to focus the active step's box(es). Only the document layer is
+  // transformed; the GuideBox stays un-zoomed + clickable. Animates between steps.
+  // We TRANSLATE so the active box's center lands at the viewport center (always
+  // centered), then scale — origin top-left so the centering math is exact.
+  const focusRect = active && active.spotlight && active.spotlight.page === idx ? active.spotlight : null;
+  const zoom = focusRect ? 1.3 : 1;
+  const cx = focusRect ? focusRect.x + focusRect.w / 2 : 0.5;
+  const cy = focusRect ? focusRect.y + focusRect.h / 2 : 0.5;
+  const txPct = (0.5 - cx * zoom) * 100;
+  const tyPct = (0.5 - cy * zoom) * 100;
 
   return (
     <div className="flex h-full flex-col">
@@ -105,7 +162,7 @@ export default function DocCanvas() {
           >
             ‹ Prev
           </button>
-          <span className="font-medium text-ink">
+          <span>
             Page {idx + 1} of {pageCount}
           </span>
           <button
@@ -121,28 +178,35 @@ export default function DocCanvas() {
 
       <div className="flex flex-1 items-start justify-center overflow-auto">
         <div
-          className="relative w-full max-w-[640px] rounded-xl border border-line-strong bg-card shadow-soft"
+          className="relative w-full max-w-[640px] overflow-hidden rounded-xl border border-line-strong bg-card shadow-soft"
           style={{ aspectRatio: `${width} / ${height}` }}
         >
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image}
-              alt={`Page ${idx + 1}`}
-              draggable={false}
-              className="absolute inset-0 h-full w-full select-none rounded-lg"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-paper-2 text-sm text-ink-faint">
-              Rendering your document…
-            </div>
-          )}
-          {fields.map((f) => (
-            <FieldOverlay key={f.id} field={f} />
-          ))}
-          <Spotlight rect={spot} />
-          {/* The guide card lives in this same page box so its placement aligns
-              with the spotlight and never covers the focused field. */}
+          {/* Document layer: zoom/pan to focus the active box. Inputs + spotlight
+              ride along so they stay aligned at any zoom. */}
+          <div
+            className="absolute inset-0 transition-transform duration-500 ease-out"
+            style={{ transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`, transformOrigin: "0 0" }}
+          >
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={`Page ${idx + 1}`}
+                draggable={false}
+                className="absolute inset-0 h-full w-full select-none"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-paper-2 text-sm text-ink-faint">
+                Rendering your document…
+              </div>
+            )}
+            {fields.map((f) => (
+              <FieldOverlay key={f.id} field={f} />
+            ))}
+            <Spotlight rects={holes} />
+          </div>
+          {/* The guide-text card (Aiden's) stays un-zoomed + clickable, placed over
+              the page box so its Back/Next buttons are never clipped by the zoom. */}
           <GuideBox />
         </div>
       </div>

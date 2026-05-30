@@ -1,23 +1,19 @@
 "use client";
-// Spotlight — template owner Sawyer. Dims the whole page with a transparent
-// cut-out over the active requirement's spotlight rect (normalized [0..1]).
-// pointer-events-none so the fields under the hole stay clickable. A null rect
-// means "dim everything" (the active step lives off-page). Sawyer animates it.
+// Spotlight — dims the page and cuts a hole over EACH active field box (per-box,
+// NOT one bounding box — a bounding box would also reveal the labels printed
+// between the boxes). A small pad gives each box breathing room; the holes + dim
+// glide together with smooth easing. No border here (FieldOverlay draws the box
+// outline). Empty rects = dim everything (the active step lives off-page).
 import type { Rect } from "@/lib/types";
 
-export default function Spotlight({ rect }: { rect: Rect | null }) {
-  // 10% breathing room around the highlighted region so the cut-out never
-  // clips the labels/text that hug the fields. Clamped to the page.
-  const PAD = 0.1;
-  const hole = rect
-    ? (() => {
-        const x = Math.max(0, rect.x - rect.w * PAD);
-        const y = Math.max(0, rect.y - rect.h * PAD);
-        const w = Math.min(1 - x, rect.w * (1 + 2 * PAD));
-        const h = Math.min(1 - y, rect.h * (1 + 2 * PAD));
-        return { x: x * 100, y: y * 100, w: w * 100, h: h * 100 };
-      })()
-    : null;
+export default function Spotlight({ rects }: { rects: Rect[] }) {
+  const pad = 1.0; // viewBox units of breathing room around each box
+  const holes = rects.map((r) => ({
+    x: Math.max(0, r.x * 100 - pad),
+    y: Math.max(0, r.y * 100 - pad),
+    w: r.w * 100 + pad * 2,
+    h: r.h * 100 + pad * 2,
+  }));
   return (
     <svg
       className="pointer-events-none absolute inset-0 z-30 h-full w-full"
@@ -27,17 +23,18 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
       <defs>
         <mask id="dt-spotlight">
           <rect x="0" y="0" width="100" height="100" fill="white" />
-          {hole && (
+          {holes.map((h, i) => (
             <rect
-              x={hole.x}
-              y={hole.y}
-              width={hole.w}
-              height={hole.h}
-              rx="0.8"
+              key={i}
+              x={h.x}
+              y={h.y}
+              width={h.w}
+              height={h.h}
+              rx="0.7"
               fill="black"
               className="transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
             />
-          )}
+          ))}
         </mask>
       </defs>
       <rect
@@ -47,20 +44,8 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
         height="100"
         fill="rgba(28,42,39,0.42)"
         mask="url(#dt-spotlight)"
+        className="transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
       />
-      {hole && (
-        <rect
-          x={hole.x}
-          y={hole.y}
-          width={hole.w}
-          height={hole.h}
-          rx="0.8"
-          fill="none"
-          stroke="#d75a32"
-          strokeWidth="0.5"
-          className="transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        />
-      )}
     </svg>
   );
 }
