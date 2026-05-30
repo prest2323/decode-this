@@ -77,17 +77,17 @@ export default function Uploader() {
 
   return (
     <div className="mx-auto w-full max-w-xl text-center px-4 animate-fadeIn">
-      {/* Flat, Sharp Drag & Drop Box (Linear/Vercel styling) */}
+      {/* Flat, Sharp VS Code style Drag & Drop Box */}
       <div
         onDragEnter={handleDrag}
         onDragOver={handleDrag}
         onDragLeave={handleDrag}
         onDrop={handleDrop}
         onClick={() => !loading && inputRef.current?.click()}
-        className={`group relative flex flex-col items-center justify-center gap-6 rounded-lg border border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
+        className={`group relative flex flex-col items-center justify-center gap-6 rounded-none border border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
           dragActive
-            ? "border-slate-900 bg-slate-50 scale-[1.005]"
-            : "border-slate-350 bg-white hover:border-slate-900 hover:bg-slate-50/50"
+            ? "border-[#007acc] bg-[#2d2d2d] scale-[1.002] shadow-md shadow-[#007acc]/5"
+            : "border-[#3c3c3c] bg-[#252526] hover:border-[#555555] hover:bg-[#2d2d2d]/80"
         } ${loading ? "pointer-events-none opacity-80" : ""}`}
       >
         <input
@@ -105,12 +105,12 @@ export default function Uploader() {
         {loading ? (
           // Crisp, minimal loading block
           <div className="flex flex-col items-center gap-4 py-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-900 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#007acc] border-t-transparent" />
             <div>
-              <p className="text-sm font-bold text-slate-900">
+              <p className="text-sm font-bold text-white">
                 Analyzing document with AI…
               </p>
-              <p className="mt-1 text-xs text-slate-500 max-w-[260px] mx-auto leading-relaxed">
+              <p className="mt-1 text-xs text-[#858585] max-w-[260px] mx-auto leading-relaxed font-medium">
                 Extracting legal clauses, mapping form fields, and preparing active overlays.
               </p>
             </div>
@@ -118,15 +118,15 @@ export default function Uploader() {
         ) : (
           // Sharp, minimal idle upload state
           <div className="flex flex-col items-center gap-4">
-            <div className="text-3xl select-none grayscale group-hover:grayscale-0 transition-all duration-300">
+            <div className="text-3xl select-none group-hover:scale-105 transition-all duration-300">
               📄
             </div>
             
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+              <h3 className="text-sm font-bold text-white tracking-tight">
                 Upload your document to begin
               </h3>
-              <p className="text-xs font-medium text-slate-500 max-w-xs mx-auto leading-relaxed">
+              <p className="text-xs font-medium text-[#858585] max-w-xs mx-auto leading-relaxed">
                 Drag and drop your PDF or image here, or browse.
               </p>
             </div>
@@ -136,7 +136,7 @@ export default function Uploader() {
               {["PDF", "PNG", "JPG"].map((ext) => (
                 <span
                   key={ext}
-                  className="px-2 py-0.5 text-[10px] font-bold tracking-tight text-slate-500 bg-slate-100 rounded border border-slate-200/50 select-none"
+                  className="px-2 py-0.5 text-[9px] font-bold tracking-tight text-[#cccccc] bg-[#2d2d2d] rounded-none border border-[#3c3c3c] select-none"
                 >
                   {ext}
                 </span>
@@ -146,18 +146,18 @@ export default function Uploader() {
         )}
       </div>
 
-      {/* Redesigned minimal error block */}
+      {/* Redesigned minimal warning/error block */}
       {error && (
-        <div className="mt-4 rounded-md bg-rose-50 border border-rose-100 p-3 text-xs text-rose-700 flex items-start gap-2.5 text-left animate-fadeIn shadow-sm">
+        <div className="mt-4 rounded-none bg-[#2d2d2d] border border-[#3c3c3c] p-3 text-xs text-[#f48771] flex items-start gap-2.5 text-left animate-fadeIn shadow-sm">
           <span className="text-sm select-none">⚠️</span>
           <div className="space-y-0.5">
-            <p className="font-bold">Analysis Failed</p>
-            <p className="text-rose-600 font-medium leading-relaxed">{error}</p>
+            <p className="font-bold">Service Interrupted</p>
+            <p className="font-medium leading-relaxed opacity-90">{error}</p>
           </div>
         </div>
       )}
 
-      {/* Sleek, sharp Vercel-style sample launcher button */}
+      {/* Sleek, sharp VS Code blue style sample launcher button */}
       <button
         type="button"
         onClick={() => {
@@ -167,10 +167,10 @@ export default function Uploader() {
           loadDoc(MOCK_DOC);
         }}
         disabled={loading}
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-slate-900 text-white font-bold px-6 py-2.5 text-xs shadow-sm hover:bg-slate-800 active:scale-98 transition-all disabled:opacity-50 border border-slate-950"
+        className="mt-6 inline-flex items-center gap-2 rounded-sm bg-[#007acc] hover:bg-[#1a8ad4] text-white font-bold px-6 py-2.5 text-xs shadow-md border border-[#007acc]/95 active:scale-98 transition-all disabled:opacity-50 select-none cursor-pointer"
       >
         <span>✨</span>
-        <span>Open SBA 7(a) Loan Sample</span>
+        <span>Launch SBA 7(a) Loan Sample</span>
       </button>
     </div>
   );

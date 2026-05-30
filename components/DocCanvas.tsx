@@ -77,15 +77,15 @@ export default function DocCanvas() {
     }
   }, [active?.id]);
 
-  // 4. Calm empty state
+  // 4. Calm empty state (VS Code Dark style)
   if (!doc) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-white border border-slate-200 rounded-lg m-4 shadow-sm">
-        <div className="w-12 h-12 mb-4 flex items-center justify-center rounded bg-slate-50 border border-slate-200 text-slate-500 text-lg shadow-sm font-bold select-none">
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-[#252526] border border-[#3c3c3c] rounded-none m-4 shadow-sm">
+        <div className="w-12 h-12 mb-4 flex items-center justify-center rounded bg-[#1e1e1e] border border-[#3c3c3c] text-[#cccccc] text-lg font-bold select-none">
           📄
         </div>
-        <h3 className="text-sm font-bold text-slate-900 tracking-tight leading-none">No document loaded</h3>
-        <p className="mt-1.5 text-xs font-medium text-slate-500 max-w-xs leading-relaxed">
+        <h3 className="text-sm font-bold text-white tracking-tight leading-none">No document loaded</h3>
+        <p className="mt-2 text-xs font-medium text-[#858585] max-w-xs leading-relaxed">
           Upload a form or PDF document above, and we will automatically map all requirements and active field overlays.
         </p>
       </div>
@@ -93,45 +93,50 @@ export default function DocCanvas() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* 5. Flat Canvas Controls Toolbar */}
-      <div className="flex items-center justify-center py-3 z-20 border-b border-slate-100">
-        <div className="flex items-center gap-2.5 bg-white border border-slate-200 px-4 py-1 rounded-md shadow-sm">
+    <div className="flex h-full flex-col bg-[#1e1e1e]">
+      {/* 5. Crisp VS Code style Controls Toolbar */}
+      <div className="flex items-center justify-center py-2.5 z-20 border-b border-[#3c3c3c] bg-[#252526] shrink-0">
+        <div className="flex items-center gap-2.5 bg-[#1e1e1e] border border-[#3c3c3c] px-4 py-1 rounded-sm shadow-inner">
           <button
             type="button"
             onClick={() => setScale((s) => Math.max(0.6, s - 0.1))}
-            className="w-7 h-7 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 transition-all font-bold shadow-sm select-none cursor-pointer text-sm"
+            className="w-7 h-7 rounded-sm border border-[#3c3c3c] bg-[#252526] flex items-center justify-center text-[#cccccc] hover:text-white hover:border-[#555555] active:bg-[#2d2d2d] transition-all font-bold select-none cursor-pointer text-sm"
             title="Zoom Out"
           >
             −
           </button>
-          <span className="text-[11px] font-bold text-slate-600 min-w-[40px] text-center select-none font-mono">
+          <span className="text-[11px] font-bold text-[#cccccc] min-w-[40px] text-center select-none font-mono">
             {Math.round(scale * 100)}%
           </span>
           <button
             type="button"
             onClick={() => setScale((s) => Math.min(1.8, s + 0.1))}
-            className="w-7 h-7 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 transition-all font-bold shadow-sm select-none cursor-pointer text-sm"
+            className="w-7 h-7 rounded-sm border border-[#3c3c3c] bg-[#252526] flex items-center justify-center text-[#cccccc] hover:text-white hover:border-[#555555] active:bg-[#2d2d2d] transition-all font-bold select-none cursor-pointer text-sm"
             title="Zoom In"
           >
             +
           </button>
           
           {/* Subtle vertical divider */}
-          <div className="w-[1px] h-3 bg-slate-200 mx-1" />
+          <div className="w-[1px] h-3 bg-[#3c3c3c] mx-1" />
 
           <button
             type="button"
             onClick={() => setScale(1.0)}
-            className="rounded border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 shadow-sm transition-all select-none cursor-pointer"
+            className="rounded-sm border border-[#3c3c3c] bg-[#252526] px-3 py-1 text-[11px] font-bold text-[#cccccc] hover:text-white hover:border-[#555555] active:bg-[#2d2d2d] transition-all select-none cursor-pointer"
           >
             Reset
           </button>
         </div>
       </div>
 
-      {/* 6. Document Scroll & Render View (Flat container) */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50/50 rounded-lg border border-slate-200/50 shadow-inner">
+      {/* 5.5 Dedicated, Static Guide Panel at the top (never covers fields, stays in place) */}
+      <div className="px-4 py-3 bg-[#1e1e1e] border-b border-[#3c3c3c] shrink-0">
+        <GuideBox />
+      </div>
+
+      {/* 6. Document Scroll & Render View (VS Code Editor Space) */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-[#1e1e1e] shadow-inner">
         <div className="relative mx-auto w-full flex flex-col items-center">
           {doc.pages.map((p) => {
             const fields = doc.requirements
@@ -143,7 +148,7 @@ export default function DocCanvas() {
               <div
                 id={`page-box-${p.index}`}
                 key={p.index}
-                className="relative mb-6 w-full overflow-hidden rounded-md border border-slate-200 shadow-sm bg-white transition-all duration-300 hover:border-slate-300"
+                className="relative mb-6 w-full overflow-hidden rounded-none border border-[#3c3c3c] shadow-md bg-[#252526] transition-all duration-300 hover:border-[#4c4c4c]"
                 style={{
                   maxWidth: `${768 * scale}px`,
                   aspectRatio: `${p.width} / ${p.height}`,
@@ -163,12 +168,8 @@ export default function DocCanvas() {
                   {fields.map((f) => (
                     <FieldOverlay key={f.id} field={f} />
                   ))}
-
-                  {/* floating GuideBox for active step on the current page box */}
-                  {((active?.spotlight && active.spotlight.page === p.index) ||
-                    (!active?.spotlight && p.index === 0)) && (
-                    <GuideBox />
-                  )}
+                  
+                  {/* floating GuideBox removed from here so it stays fixed in the top panel */}
                 </div>
               </div>
             );
@@ -238,7 +239,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
       <img
         src={p.image}
         alt={`Page ${p.index + 1}`}
-        className="block h-full w-full select-none"
+        className="block h-full w-full select-none opacity-85"
         draggable={false}
       />
     );
@@ -246,7 +247,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
 
   if (renderError) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-500 text-sm">
+      <div className="flex h-full w-full items-center justify-center bg-[#252526] text-[#858585] text-sm">
         Failed to render PDF page.
       </div>
     );
@@ -255,13 +256,13 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
   return (
     <div className="relative h-full w-full">
       {rendering && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-900 border-t-transparent shadow-sm" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[#252526]/50 z-10">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#007acc] border-t-transparent shadow-sm" />
         </div>
       )}
       <canvas
         ref={canvasRef}
-        className="block h-full w-full select-none"
+        className="block h-full w-full select-none opacity-85"
       />
     </div>
   );

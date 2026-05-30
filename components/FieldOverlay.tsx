@@ -18,10 +18,10 @@ export default function FieldOverlay({ field }: { field: Field }) {
     height: `${field.rect.h * 100}%`,
   };
 
-  // Flat enterprise-style focus and inactive outlines
+  // VS Code Dark Style input outlines and backgrounds
   const ring = isActive
-    ? "border-2 border-slate-900 bg-slate-50 z-40 scale-[1.005] shadow-sm animate-pulse-subtle"
-    : "border border-slate-250 bg-white/95 z-10 opacity-80 hover:opacity-100 hover:border-slate-400";
+    ? "border-[#007acc] bg-[#2d2d2d] text-white z-40 scale-[1.01] shadow-md ring-1 ring-[#007acc]/45 animate-pulse-subtle"
+    : "border-[#3c3c3c] bg-[#2d2d2d]/90 text-[#cccccc] z-10 opacity-75 hover:opacity-100 hover:border-[#555555]";
 
   // Checkbox Field
   if (field.kind === "checkbox") {
@@ -32,7 +32,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
         checked={field.value === true}
         onChange={(e) => setFieldValue(field.id, e.target.checked)}
         style={style}
-        className={`pointer-events-auto absolute cursor-pointer accent-slate-900 transition-all ${ring}`}
+        className={`pointer-events-auto absolute cursor-pointer accent-[#007acc] bg-[#2d2d2d] transition-all ${ring}`}
       />
     );
   }
@@ -45,11 +45,11 @@ export default function FieldOverlay({ field }: { field: Field }) {
         value={typeof field.value === "string" ? field.value : ""}
         onChange={(e) => setFieldValue(field.id, e.target.value)}
         style={style}
-        className={`pointer-events-auto absolute rounded border text-[clamp(7px,1.2vw,14px)] font-bold text-slate-800 outline-none transition-all px-1 shadow-sm ${ring}`}
+        className={`pointer-events-auto absolute rounded-none border text-[clamp(7px,1.2vw,14px)] font-bold outline-none transition-all px-1.5 shadow-sm ${ring}`}
       >
-        <option value="">--</option>
+        <option value="" className="bg-[#2d2d2d] text-[#cccccc]">--</option>
         {field.options?.map((opt) => (
-          <option key={opt} value={opt}>
+          <option key={opt} value={opt} className="bg-[#2d2d2d] text-[#cccccc]">
             {opt}
           </option>
         ))}
@@ -66,12 +66,12 @@ export default function FieldOverlay({ field }: { field: Field }) {
         value={typeof field.value === "string" ? field.value : ""}
         onChange={(e) => setFieldValue(field.id, e.target.value)}
         style={style}
-        className={`pointer-events-auto absolute rounded border text-[clamp(7px,1.2vw,14px)] text-slate-800 outline-none transition-all px-1 shadow-sm ${ring}`}
+        className={`pointer-events-auto absolute rounded-none border text-[clamp(7px,1.2vw,14px)] outline-none transition-all px-1.5 shadow-sm ${ring}`}
       />
     );
   }
 
-  // Signature Field (Beautiful calligraphic toggle with cream frosted paper style)
+  // Signature Field (Beautiful calligraphic toggle with VS Code dark styling)
   if (field.kind === "signature") {
     const isSigned = !!field.value;
     return (
@@ -80,10 +80,10 @@ export default function FieldOverlay({ field }: { field: Field }) {
         aria-label={field.label[lang]}
         onClick={() => setFieldValue(field.id, isSigned ? null : "Sawyer Cram")}
         style={style}
-        className={`pointer-events-auto absolute rounded border flex items-center justify-between px-2 text-[clamp(6px,1.1vw,14px)] font-bold tracking-tight transition-all duration-350 shadow-sm ${
+        className={`pointer-events-auto absolute rounded-none border flex items-center justify-between px-2 text-[clamp(6px,1.1vw,14px)] font-bold tracking-tight transition-all duration-350 shadow-sm ${
           isSigned
-            ? "font-serif italic text-slate-900 bg-slate-50 border-slate-900"
-            : "text-slate-400 bg-slate-50 border-slate-350 border-dashed hover:bg-slate-100"
+            ? "font-serif italic text-[#007acc] bg-[#2d2d2d] border-[#007acc]"
+            : "text-[#858585] bg-[#252526] border-[#3c3c3c] border-dashed hover:bg-[#2d2d2d]"
         } ${ring}`}
       >
         <span className="truncate">
@@ -108,7 +108,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
       placeholder={field.placeholder ?? field.label[lang]}
       onChange={(e) => setFieldValue(field.id, e.target.value)}
       style={style}
-      className={`pointer-events-auto absolute rounded border px-1.5 text-[clamp(7px,1.2vw,14px)] font-bold text-slate-800 outline-none placeholder:text-slate-400 transition-all shadow-sm ${ring}`}
+      className={`pointer-events-auto absolute rounded-none border px-2 text-[clamp(7px,1.2vw,14px)] font-bold outline-none placeholder:text-[#555555] transition-all shadow-sm ${ring}`}
     />
   );
 }
