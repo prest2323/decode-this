@@ -9,7 +9,7 @@ We are 4 people, each driving an AI. **Read your one-page job sheet in [`tasks/`
 | # | Person + AI | Role | Owns these files ONLY |
 |---|---|---|---|
 | 1 | **Preston + Claude Code** | **Lead / Backend / Integrator** | `lib/types.ts`, `lib/gemini.ts`, `app/api/decode/route.ts`, `app/page.tsx`, all merges + deploy |
-| 2 | **MK + Claude Code** | **Backend #2 / Prompts / Deploy** | `lib/prompt.ts`, `lib/mock.ts`, Vercel deploy, QA |
+| 2 | **MK + Claude Code** | **Backend Lead #2 (heavy track)** | `lib/prompt.ts`, `lib/mock.ts`, `scripts/` (eval harness), Vercel deploy, QA |
 | 3 | **Sawyer + Antigravity (Gemini)** | **Decode UI + Look & Feel** | `components/ResultCard.tsx`, `components/LanguageToggle.tsx`, `components/Uploader.tsx`, `components/ReadAloud.tsx`, `app/globals.css` |
 | 4 | **Aiden + Antigravity (Gemini)** | **Express UI + Demo + Pitch** | `components/ExpressInput.tsx`, `components/ExpressResult.tsx`, `components/MicInput.tsx`, `demo/`, `PITCH.md` |
 
