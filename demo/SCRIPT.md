@@ -46,14 +46,14 @@
 * **Talking Points:**
   * *"When you fill the form, our Guided tour draws a high-visibility spotlight over related fields—like the full address block in ONE go. And look at the GuideBox: it uses dynamic geometric spacing to position itself in the largest free space, so it NEVER blocks the field you are actively typing into. Accessible, bilingual EN/ES, and completely intuitive."*
 
-### **[1:05 - 1:20] Beat 5: Context-Aware CHAT**
+### **[1:05 - 1:20] Beat 5: Context-Aware CHAT & Starter Chips**
 * **Action:**
   * Click the floating **💬 Ask about this document** widget at the bottom right.
-  * Note how the AI greets you dynamically based on the current step: *"Ask me anything about step 'Enter Borrower Address'."*
-  * Type: *"what is a personal guarantee?"* and hit Send.
-  * Show the grounded mock answer instantly detailing the risk.
+  * Point out the **Suggested Question Chips** sitting conveniently above the input bar: *"It greets you based on your step, and gives you starter questions."*
+  * Click the first starter chip: **"What's a personal guarantee?"** (or **"¿Qué es una garantía personal?"** if Spanish is active).
+  * Watch it send instantly and render the grounded, plain-language legal explanation.
 * **Talking Points:**
-  * *"Stuck on a question? Our AI Chat assistant is context-aware. It knows exactly which step you are on, explaining legal terms in plain 5th-grade English right on the spot."*
+  * *"Stuck on a term? Our AI Chat assistant is context-aware. Instead of typing, just click a starter chip like 'What's a personal guarantee?' and get instant, grounded clarity without leaving the page."*
 
 ### **[1:20 - 1:30] Beat 6: Done & EXPORT**
 * **Action:**
