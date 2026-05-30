@@ -150,6 +150,26 @@ function groundedMockAnswer(req: ChatRequest): ChatResult {
   const flagOf = (kind: string) =>
     doc.topFlags.find((f) => f.kind === kind) ?? doc.requirements.flatMap((r) => r.flags).find((f) => f.kind === kind);
 
+  // Open-ended legal / financial ADVICE (decision / panic / rights questions) →
+  // route to a professional, never guess. Checked FIRST so a question that also
+  // mentions a fee/deadline/tax keyword ("should I pay this fee or is it a scam?")
+  // still gets the safe hand-off instead of a definitive informational answer.
+  if (
+    /should i (sign|sue|pay|agree|do)|is (this|it) (legal|safe|a scam)|can they (take|sue|garnish|deport|evict|repossess)|will (this|it).*(credit|immigration|deport)|lawsuit|garnish|repossess|\bdeport|\bevict|my rights|legal advice|deber[ií]a (firmar|pagar|demand)|es (legal|seguro|una estafa)|pueden (quitar|demand|deportar|desaloj|embargar)|mis derechos|consejo legal/.test(
+      q,
+    )
+  ) {
+    if (active) cited.push(active.id);
+    return {
+      answer: pick(
+        lang,
+        "That's an important question, and the safe answer depends on your exact situation — it's worth a few minutes with a professional. For legal questions, many courts and nonprofits offer free legal aid; for money questions, a nonprofit financial counselor or your lender can help. I can explain what this document says, but I can't give legal or financial advice.",
+        "Esa es una pregunta importante, y la respuesta segura depende de su situación exacta — vale la pena unos minutos con un profesional. Para temas legales, muchas cortes y organizaciones sin fines de lucro ofrecen asistencia legal gratuita; para temas de dinero, un consejero financiero sin fines de lucro o su prestamista pueden ayudar. Puedo explicar lo que dice este documento, pero no puedo dar consejo legal ni financiero.",
+      ),
+      citedRequirementIds: cited,
+    };
+  }
+
   if (/(personal )?guarant|garant/.test(q)) {
     const r = doc.requirements.find((x) => x.flags.some((f) => f.kind === "legal-risk"));
     if (r) cited.push(r.id);
@@ -234,23 +254,6 @@ function groundedMockAnswer(req: ChatRequest): ChatResult {
       };
     }
     // no tax-related step on this doc → fall through (don't assert SBA tax facts)
-  }
-
-  // Open-ended legal / financial ADVICE → route to a professional, never guess.
-  if (
-    /should i (sign|sue|pay|agree|do)|is (this|it) (legal|safe|a scam)|can they (take|sue|garnish|deport|evict|repossess)|will (this|it).*(credit|immigration|deport)|lawsuit|garnish|repossess|\bdeport|\bevict|my rights|legal advice|deber[ií]a (firmar|pagar|demand)|es (legal|seguro|una estafa)|pueden (quitar|demand|deportar|desaloj|embargar)|mis derechos|consejo legal/.test(
-      q,
-    )
-  ) {
-    if (active) cited.push(active.id);
-    return {
-      answer: pick(
-        lang,
-        "That's an important question, and the safe answer depends on your exact situation — it's worth a few minutes with a professional. For legal questions, many courts and nonprofits offer free legal aid; for money questions, a nonprofit financial counselor or your lender can help. I can explain what this document says, but I can't give legal or financial advice.",
-        "Esa es una pregunta importante, y la respuesta segura depende de su situación exacta — vale la pena unos minutos con un profesional. Para temas legales, muchas cortes y organizaciones sin fines de lucro ofrecen asistencia legal gratuita; para temas de dinero, un consejero financiero sin fines de lucro o su prestamista pueden ayudar. Puedo explicar lo que dice este documento, pero no puedo dar consejo legal ni financiero.",
-      ),
-      citedRequirementIds: cited,
-    };
   }
 
   if (active) {
