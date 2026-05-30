@@ -118,8 +118,10 @@ async function withRetry<T>(
 // failure doesn't get pinned. Capacity-bounded FIFO; values hold no user input.
 const analysisCache = new Map<string, DocumentModel>();
 const ANALYSIS_CACHE_MAX = 24;
-function analysisKey(file: string): string {
-  const hash = createHash("sha256").update(file).digest("hex");
+function analysisKey(file: string, mime: string): string {
+  // Include mime: parseFile()'s text/binary + AcroForm-PDF routing depends on it,
+  // so byte-identical raw content with a different mime must NOT share a result.
+  const hash = createHash("sha256").update(mime || "").update("|").update(file).digest("hex");
   return `${provider()}|${GEMINI_MODEL}|${ANTHROPIC_MODEL}|${hash}`;
 }
 function cacheGet(key: string): DocumentModel | undefined {
@@ -148,20 +150,25 @@ export interface AcroFieldInfo {
 }
 
 /** Map an AcroForm widget rect (PDF user space, origin bottom-left) to a
- *  normalized [0..1] top-left rect on the DISPLAYED page, honoring /Rotate.
- *  Corners are mapped individually then min/maxed, so any rotation and any
- *  corner ordering produce a correct, positive-size rect. */
+ *  normalized [0..1] top-left rect on the DISPLAYED page, honoring /Rotate and a
+ *  non-zero MediaBox origin (mbX/mbY) — widget /Rect values share the MediaBox's
+ *  absolute user space, so a cropped/imposed form (MediaBox not at 0,0) must be
+ *  translated into box-local space first. Corners are mapped individually then
+ *  min/maxed, so any rotation and any corner ordering produce a positive rect. */
 function widgetRectToNorm(
   raw: { x: number; y: number; width: number; height: number },
   pw: number,
   ph: number,
+  mbX: number,
+  mbY: number,
   rot: number,
 ): Rect | null {
   if (!(pw > 0) || !(ph > 0)) return null;
-  const x0 = raw.x;
-  const y0 = raw.y;
-  const x1 = raw.x + raw.width;
-  const y1 = raw.y + raw.height;
+  // translate into MediaBox-local space (mbX=mbY=0 for the common case → no-op)
+  const x0 = raw.x - mbX;
+  const y0 = raw.y - mbY;
+  const x1 = raw.x + raw.width - mbX;
+  const y1 = raw.y + raw.height - mbY;
   const r = ((rot % 360) + 360) % 360;
   const map = (X: number, Y: number): { nx: number; ny: number } => {
     switch (r) {
@@ -307,9 +314,9 @@ export async function extractAcroFields(input: Uint8Array | string): Promise<Acr
         ctx,
       );
       const page = pages[pageIndex];
-      const { width: pw, height: ph } = page.getSize();
+      const mb = page.getMediaBox();
       const rot = page.getRotation().angle || 0;
-      const rect = widgetRectToNorm(raw, pw, ph, rot);
+      const rect = widgetRectToNorm(raw, mb.width, mb.height, mb.x, mb.y, rot);
       if (!rect) continue;
       if (rect.w <= 0 || rect.h <= 0) continue; // hidden / zero-size widget
       rect.page = pageIndex;
@@ -372,12 +379,34 @@ function bboxOf(fields: Field[]): Rect | null {
  */
 export function attachRealRects(model: DocumentModel, acro: AcroFieldInfo[]): DocumentModel {
   if (!acro.length) return model;
+  // A field can have multiple widgets sharing ONE name (a radio group's option
+  // buttons, or a field repeated across pages). Union them into one rect on the
+  // first widget's page so a radio cluster's spotlight covers the whole group
+  // instead of collapsing to the first button. Single-widget fields are unchanged.
+  const groups = new Map<string, AcroFieldInfo[]>();
+  for (const f of acro) {
+    const arr = groups.get(f.name);
+    if (arr) arr.push(f);
+    else groups.set(f.name, [f]);
+  }
+  const unionInfo = (arr: AcroFieldInfo[]): AcroFieldInfo => {
+    if (arr.length === 1) return arr[0];
+    const page = arr[0].rect.page;
+    const same = arr.filter((f) => f.rect.page === page);
+    const minX = Math.min(...same.map((f) => f.rect.x));
+    const minY = Math.min(...same.map((f) => f.rect.y));
+    const maxX = Math.max(...same.map((f) => f.rect.x + f.rect.w));
+    const maxY = Math.max(...same.map((f) => f.rect.y + f.rect.h));
+    const c = (n: number) => Math.max(0, Math.min(1, n));
+    return { ...arr[0], rect: { page, x: c(minX), y: c(minY), w: c(maxX - minX), h: c(maxY - minY) } };
+  };
   const byExact = new Map<string, AcroFieldInfo>();
   const byNorm = new Map<string, AcroFieldInfo>();
-  for (const f of acro) {
-    if (!byExact.has(f.name)) byExact.set(f.name, f);
-    const nk = normName(f.name);
-    if (nk && !byNorm.has(nk)) byNorm.set(nk, f);
+  for (const [name, arr] of groups) {
+    const info = unionInfo(arr);
+    byExact.set(name, info);
+    const nk = normName(name);
+    if (nk && !byNorm.has(nk)) byNorm.set(nk, info);
   }
   let matched = 0;
   const requirements = model.requirements.map((r) => {
@@ -424,6 +453,16 @@ function verticalGap(a: Requirement, b: Requirement): number {
   if (!ab || !bb) return 1;
   return Math.max(bb.y - (ab.y + ab.h), ab.y - (bb.y + bb.h));
 }
+/** Horizontal overlap of two blocks as a fraction of the narrower block. Low
+ *  overlap ⇒ they're side-by-side (two columns) ⇒ distinct blocks, don't merge. */
+function horizontalOverlapRatio(a: Requirement, b: Requirement): number {
+  const ab = bboxOf(a.fields);
+  const bb = bboxOf(b.fields);
+  if (!ab || !bb) return 0;
+  const overlap = Math.max(0, Math.min(ab.x + ab.w, bb.x + bb.w) - Math.max(ab.x, bb.x));
+  const minW = Math.min(ab.w, bb.w);
+  return minW > 0 ? overlap / minW : 0;
+}
 
 /**
  * (a) Safety-net merge: collapse CONSECUTIVE same-unit fill-fields (an address
@@ -439,7 +478,10 @@ function mergeAdjacent(reqs: Requirement[]): Requirement[] {
       prev &&
       reqPage(prev) === reqPage(r) &&
       ((isAddressClass(prev) && isAddressClass(r)) || (isNamePartClass(prev) && isNamePartClass(r))) &&
-      verticalGap(prev, r) < 0.08;
+      // vertically adjacent AND horizontally aligned — a single stacked block, not
+      // two side-by-side columns (which a vertical-only test would wrongly merge).
+      verticalGap(prev, r) < 0.08 &&
+      horizontalOverlapRatio(prev, r) > 0.5;
     if (sameClass) {
       const fields = [...prev.fields, ...r.fields];
       out[out.length - 1] = {
@@ -644,8 +686,13 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
   const which = provider();
   if (which === "mock") return fallback;
 
+  // Whole-invocation budget (< the route's maxDuration=60s). The AcroForm parse
+  // below counts against it too, so a slow parse + model call can't run past the
+  // limit and bypass the catch-block mock fallback.
+  const deadline = Date.now() + 50_000;
+
   // (0) identical-doc cache — re-uploads / repeated eval hits return instantly.
-  const key = analysisKey(req.file);
+  const key = analysisKey(req.file, req.mime ?? "");
   const cached = cacheGet(key);
   if (cached) return { ...cached, fileName };
 
@@ -670,7 +717,7 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
         which === "gemini"
           ? extractWithGemini(parsed, systemText)
           : extractWithAnthropic(parsed, systemText),
-      { totalMs: 55_000, label: "extract" },
+      { totalMs: Math.max(0, deadline - Date.now()), label: "extract" },
     );
     let model = normalizeDoc(raw, fileName);
     // A reply with no requirements is useless on stage — protect the demo.

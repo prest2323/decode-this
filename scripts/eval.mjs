@@ -140,9 +140,10 @@ function expectationFailures(name, m) {
   const fails = [];
   if (exp.type && !m._types.has(exp.type)) fails.push(`missing type ${exp.type}`);
   if (exp.anyType && !exp.anyType.some((t) => m._types.has(t))) fails.push(`missing any of type ${exp.anyType.join("|")}`);
-  if (exp.flag && !(exp.anyFlagOk ? exp.anyFlagOk.some((k) => m._flagKinds.has(k)) : m._flagKinds.has(exp.flag))) {
-    fails.push(`missing flag ${exp.anyFlagOk ? exp.anyFlagOk.join("|") : exp.flag}`);
-  }
+  // Decoupled from exp.flag so an anyFlagOk-only entry (court-summons) is actually
+  // enforced — previously the whole check hid behind `if (exp.flag && …)`.
+  const flagReq = exp.anyFlagOk ?? (exp.flag ? [exp.flag] : null);
+  if (flagReq && !flagReq.some((k) => m._flagKinds.has(k))) fails.push(`missing flag ${flagReq.join("|")}`);
   if (exp.addrGroup && !m.grouping_ok) fails.push("address not grouped");
   return fails;
 }

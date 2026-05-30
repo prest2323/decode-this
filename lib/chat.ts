@@ -144,55 +144,96 @@ function groundedMockAnswer(req: ChatRequest): ChatResult {
   const active = doc.requirements.find((r) => r.id === req.activeRequirementId) ?? null;
   const cited: string[] = [];
 
+  // Rich SBA-specific copy ONLY when this really is the SBA hero; every other
+  // document gets answers grounded in ITS OWN flags/requirements (never SBA facts).
+  const isSba = doc.id === "mock_sba_7a";
+  const flagOf = (kind: string) =>
+    doc.topFlags.find((f) => f.kind === kind) ?? doc.requirements.flatMap((r) => r.flags).find((f) => f.kind === kind);
+
   if (/(personal )?guarant|garant/.test(q)) {
     const r = doc.requirements.find((x) => x.flags.some((f) => f.kind === "legal-risk"));
     if (r) cited.push(r.id);
-    return {
-      answer: pick(
-        lang,
-        "A personal guarantee means you promise to repay the loan with your own money and property if the business can't. For an SBA 7(a) loan, every owner of 20% or more has to sign one. It's normal — but take it seriously, because your personal credit and assets can be on the line.",
-        "Una garantía personal significa que usted promete pagar el préstamo con su propio dinero y bienes si el negocio no puede. En un préstamo SBA 7(a), cada dueño con 20% o más debe firmarla. Es normal, pero tómelo en serio: su crédito y propiedad personal pueden estar en juego.",
-      ),
-      citedRequirementIds: cited,
-    };
+    if (isSba) {
+      return {
+        answer: pick(
+          lang,
+          "A personal guarantee means you promise to repay the loan with your own money and property if the business can't. For an SBA 7(a) loan, every owner of 20% or more has to sign one. It's normal — but take it seriously, because your personal credit and assets can be on the line.",
+          "Una garantía personal significa que usted promete pagar el préstamo con su propio dinero y bienes si el negocio no puede. En un préstamo SBA 7(a), cada dueño con 20% o más debe firmarla. Es normal, pero tómelo en serio: su crédito y propiedad personal pueden estar en juego.",
+        ),
+        citedRequirementIds: cited,
+      };
+    }
+    if (r) {
+      return {
+        answer: pick(
+          lang,
+          `On this document, that's the legal-risk step "${r.title.en}": ${r.guidance.en}`,
+          `En este documento, ese es el paso de riesgo legal "${r.title.es}": ${r.guidance.es}`,
+        ),
+        citedRequirementIds: cited,
+      };
+    }
+    // no legal-risk step on this doc → fall through to the active-step / summary answer
   }
 
   if (/(fee|cost|charge|price|tarifa|cuota|costo|precio)/.test(q)) {
-    const fee = doc.topFlags.find((f) => f.kind === "fee");
+    const fee = flagOf("fee");
+    if (isSba) {
+      return {
+        answer: pick(
+          lang,
+          `The main upfront cost is the SBA guaranty fee${fee ? ` (${fee.label.en})` : ""}. It's usually rolled into the loan rather than paid out of pocket on day one — but confirm the exact amount with your lender.`,
+          `El costo inicial principal es la tarifa de garantía de la SBA${fee ? ` (${fee.label.es})` : ""}. Normalmente se incluye en el préstamo en vez de pagarse de su bolsillo el primer día, pero confirme el monto exacto con su prestamista.`,
+        ),
+      };
+    }
+    if (fee) {
+      return {
+        answer: pick(
+          lang,
+          `The cost on this document is ${fee.label.en}. Confirm the exact amount with whoever issued it before you pay.`,
+          `El costo en este documento es ${fee.label.es}. Confirme el monto exacto con quien lo emitió antes de pagar.`,
+        ),
+      };
+    }
     return {
       answer: pick(
         lang,
-        `The main upfront cost is the SBA guaranty fee${fee ? ` (${fee.label.en})` : ""}. It's usually rolled into the loan rather than paid out of pocket on day one — but confirm the exact amount with your lender.`,
-        `El costo inicial principal es la tarifa de garantía de la SBA${fee ? ` (${fee.label.es})` : ""}. Normalmente se incluye en el préstamo en vez de pagarse de su bolsillo el primer día, pero confirme el monto exacto con su prestamista.`,
+        "I don't see a specific fee on this document. If you're worried about a cost, ask whoever sent it to confirm.",
+        "No veo una tarifa específica en este documento. Si le preocupa un costo, pregunte a quien se lo envió para confirmar.",
       ),
     };
   }
 
   if (/(deadline|due|when|fecha|plazo|vence|cuándo|cuando)/.test(q)) {
-    const d = doc.topFlags.find((f) => f.kind === "deadline");
+    const d = flagOf("deadline");
     return {
       answer: d
         ? pick(
             lang,
-            `The key deadline is ${d.label.en}. Don't miss it — incomplete applications usually get pushed to the next cycle.`,
-            `La fecha límite clave es ${d.label.es}. No la pierda: las solicitudes incompletas suelen pasar al siguiente ciclo.`,
+            `The key deadline is ${d.label.en}. Don't miss it — late or incomplete submissions can set you back.`,
+            `La fecha límite clave es ${d.label.es}. No la pierda: enviar tarde o incompleto puede atrasarlo.`,
           )
         : pick(
             lang,
-            "I don't see a hard deadline on this document, but submit as early as you can.",
-            "No veo una fecha límite estricta en este documento, pero envíelo lo antes posible.",
+            "I don't see a hard deadline on this document, but it's safest to act early.",
+            "No veo una fecha límite estricta en este documento, pero lo más seguro es actuar pronto.",
           ),
     };
   }
 
   if (/(tax|return|impuesto|declaraci)/.test(q)) {
-    return {
-      answer: pick(
-        lang,
-        "You'll need your most recent business tax return — and often personal returns for each owner too. Have the 2025 return ready as a PDF before you start the financial sections.",
-        "Necesitará su declaración de impuestos comercial más reciente, y a menudo también las personales de cada dueño. Tenga lista la declaración de 2025 en PDF antes de comenzar las secciones financieras.",
-      ),
-    };
+    const taxReq = doc.requirements.find((r) =>
+      /tax|return|impuesto|declaraci/i.test(`${r.title.en} ${r.title.es} ${r.guidance.en} ${r.guidance.es}`),
+    );
+    if (taxReq) {
+      cited.push(taxReq.id);
+      return {
+        answer: pick(lang, `For "${taxReq.title.en}": ${taxReq.guidance.en}`, `Para "${taxReq.title.es}": ${taxReq.guidance.es}`),
+        citedRequirementIds: cited,
+      };
+    }
+    // no tax-related step on this doc → fall through (don't assert SBA tax facts)
   }
 
   // Open-ended legal / financial ADVICE → route to a professional, never guess.

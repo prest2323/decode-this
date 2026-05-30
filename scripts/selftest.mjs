@@ -128,6 +128,17 @@ async function main() {
   check("all rects are within [0..1]", acro.every((f) => inRange(f.rect)));
   check("kind inferred as text", acro.every((f) => f.kind === "text"));
 
+  // MediaBox origin handling: a page whose box starts at (50,50). A field at
+  // absolute (110,700) is box-local (60,650) → x must be 0.1, not 110/600≈0.183.
+  const offPdf = await PDFDocument.create();
+  const offPage = offPdf.addPage([600, 800]);
+  offPage.setMediaBox(50, 50, 600, 800);
+  const offTf = offPdf.getForm().createTextField("off_name");
+  offTf.addToPage(offPage, { x: 110, y: 700, width: 300, height: 20, borderWidth: 1 });
+  const offAcro = await extractAcroFields(await offPdf.save());
+  const offHit = offAcro.find((f) => f.name === "off_name");
+  check("non-zero MediaBox origin is subtracted (offset form maps right)", offHit && near(offHit.rect.x, 0.1), JSON.stringify(offHit?.rect));
+
   // attachRealRects: a model-style doc whose field names match the AcroForm,
   // but with WRONG (placeholder) rects, should get the real geometry stamped on.
   section("extract.ts — attachRealRects (name join)");
@@ -172,6 +183,17 @@ async function main() {
   check("the prerequisite (gather) is ordered before the on-page fill", ordered[0].type === "gather-document");
   check("order is reassigned 1..n contiguous", ordered.every((r, i) => r.order === i + 1));
   check("exactly one active step", ordered.filter((r) => r.status === "active").length === 1);
+
+  // Two side-by-side (two-column) address blocks must NOT merge (horizontal guard).
+  const twocol = normalizeDoc({
+    docType: { en: "x", es: "x" }, summary: { en: "a. b. c.", es: "a. b. c." },
+    requirements: [
+      { id: "L", order: 1, type: "fill-field", difficulty: "easy", title: { en: "Home address", es: "Dirección de casa" }, guidance: { en: "x", es: "x" }, flags: [], fields: [{ id: "ls", name: "home_addr_street", kind: "text", label: { en: "Street", es: "Calle" }, rect: { page: 0, x: 0.05, y: 0.30, w: 0.35, h: 0.03 }, required: true }] },
+      { id: "R", order: 2, type: "fill-field", difficulty: "easy", title: { en: "Mailing address", es: "Dirección postal" }, guidance: { en: "x", es: "x" }, flags: [], fields: [{ id: "rs", name: "mail_addr_street", kind: "text", label: { en: "Street", es: "Calle" }, rect: { page: 0, x: 0.55, y: 0.30, w: 0.35, h: 0.03 }, required: true }] },
+    ],
+  });
+  const twocolAddr = groupAndOrder(twocol.requirements).filter((r) => r.fields.some((f) => /addr|street/i.test(f.name)));
+  check("side-by-side address blocks do NOT merge (stay 2)", twocolAddr.length === 2, `${twocolAddr.length} groups`);
 
   // ---------------- bilingual integrity (task 7) ----------------
   section("normalizeDoc — bilingual fill-on-miss");
