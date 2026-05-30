@@ -1,164 +1,96 @@
-// OWNER: Lead (Claude 5x #1) — integration. Wires every teammate's component.
-// Don't put visual polish here; that lives in the components.
 "use client";
-import { useState } from "react";
-import type { ApiResponse, DecodeResult, ExpressResult, Lang, Mode } from "@/lib/types";
+// WORKSPACE — owned by Preston (Lead). Wires every teammate's component through
+// useDoc() with minimal prop threading. No doc -> the upload hero; doc loaded ->
+// the three-lens workspace: Protect + Checklist (left), the guided DocCanvas +
+// TourController (center), and the floating ChatWidget. Don't put visual polish
+// here — that lives in the components.
+import { useDoc } from "@/lib/store";
+import type { Lang } from "@/lib/types";
 import Uploader from "@/components/Uploader";
-import ResultCard from "@/components/ResultCard";
-import LanguageToggle from "@/components/LanguageToggle";
-import ReadAloud from "@/components/ReadAloud";
-import MicInput from "@/components/MicInput";
-import ExpressInput from "@/components/ExpressInput";
-import ExpressResultCard from "@/components/ExpressResult";
-import FollowUp from "@/components/FollowUp";
+import RiskSummary from "@/components/RiskSummary";
+import ChecklistPanel from "@/components/ChecklistPanel";
+import DocCanvas from "@/components/DocCanvas";
+import TourController from "@/components/TourController";
+import ChatWidget from "@/components/ChatWidget";
 
-export default function Home() {
-  const [mode, setMode] = useState<Mode>("decode");
-  const [lang, setLang] = useState<Lang>("en");
-  const [loading, setLoading] = useState(false);
-  const [decoded, setDecoded] = useState<DecodeResult | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [expressText, setExpressText] = useState("");
-  const [audience, setAudience] = useState("");
-  const [expressed, setExpressed] = useState<ExpressResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export default function Page() {
+  const { doc, lang, setLang, exportAs, reset } = useDoc();
 
-  function switchMode(m: Mode) {
-    setMode(m);
-    setError(null);
-  }
-
-  async function call(payload: object): Promise<ApiResponse> {
-    const res = await fetch("/api/decode", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return res.json();
-  }
-
-  async function onImage(dataUrl: string) {
-    setImageUrl(dataUrl);
-    setDecoded(null);
-    setError(null);
-    setLoading(true);
-    const r = await call({ mode: "decode", image: dataUrl });
-    if (r.ok && r.mode === "decode") setDecoded(r.result);
-    else if (!r.ok) setError(r.error);
-    setLoading(false);
-  }
-
-  async function onExpress() {
-    setExpressed(null);
-    setError(null);
-    setLoading(true);
-    const r = await call({ mode: "express", text: expressText, lang, audience: audience || undefined });
-    if (r.ok && r.mode === "express") setExpressed(r.result);
-    else if (!r.ok) setError(r.error);
-    setLoading(false);
+  if (!doc) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-5 py-10">
+        <header className="text-center">
+          <h1 className="text-4xl font-black tracking-tight text-slate-900">Decode This</h1>
+          <p className="mt-2 max-w-md text-slate-500">
+            Drop in a scary, complex document — a loan application, a benefits form — and we&apos;ll
+            break it down and hold your hand through every step.
+          </p>
+        </header>
+        <Uploader />
+      </main>
+    );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-5 py-8">
-      <header className="text-center">
-        <h1 className="text-4xl font-black tracking-tight text-gray-900">Decode This</h1>
-        <p className="mt-1 text-gray-500">
-          The bilingual kid who reads your mail — and helps you answer it.
-        </p>
+    <main className="flex h-screen flex-col">
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+        <button
+          type="button"
+          onClick={reset}
+          className="text-sm font-semibold text-slate-500 hover:text-slate-800"
+        >
+          ← New
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-bold text-slate-900">{doc.docType[lang]}</div>
+          <div className="truncate text-xs text-slate-400">{doc.fileName}</div>
+        </div>
+        <LangToggle lang={lang} onChange={setLang} />
+        <div className="hidden items-center gap-1 sm:flex">
+          {(["pdf", "json", "csv"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => exportAs(f)}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </header>
 
-      <div className="mx-auto inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold">
-        <Tab active={mode === "decode"} onClick={() => switchMode("decode")}>
-          📄 Decode a document
-        </Tab>
-        <Tab active={mode === "express"} onClick={() => switchMode("express")}>
-          💬 Find my words
-        </Tab>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[320px_1fr]">
+        <aside className="flex min-h-0 flex-col gap-3">
+          <RiskSummary />
+          <ChecklistPanel />
+        </aside>
+        <section className="flex min-h-0 flex-col gap-3">
+          <div className="min-h-0 flex-1">
+            <DocCanvas />
+          </div>
+          <TourController />
+        </section>
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 p-3 text-center text-red-600">{error}</p>}
-
-      {mode === "decode" ? (
-        <section className="space-y-5">
-          <Uploader onImage={onImage} loading={loading} />
-          {loading && !decoded && <SkeletonCard />}
-          {decoded && (
-            <>
-              <div className="flex items-center justify-between">
-                <LanguageToggle lang={lang} onChange={setLang} />
-                <ReadAloud
-                  text={`${decoded.title[lang]}. ${decoded.meaning[lang]}. ${decoded.action[lang]}`}
-                  lang={lang}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-[110px_1fr]">
-                {imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageUrl}
-                    alt="The document you scanned"
-                    className="hidden h-32 w-full rounded-xl border border-gray-200 object-cover sm:block"
-                  />
-                )}
-                <ResultCard result={decoded} lang={lang} />
-              </div>
-              <FollowUp context={decoded} lang={lang} />
-            </>
-          )}
-        </section>
-      ) : (
-        <section className="space-y-5">
-          <div className="flex justify-end">
-            <MicInput lang={lang} onTranscript={(t) => setExpressText((p) => (p ? `${p} ${t}` : t))} />
-          </div>
-          <ExpressInput
-            value={expressText}
-            onChange={setExpressText}
-            lang={lang}
-            onLangChange={setLang}
-            onSubmit={onExpress}
-            loading={loading}
-            audience={audience}
-            onAudienceChange={setAudience}
-          />
-          {loading && !expressed && <SkeletonCard />}
-          {expressed && <ExpressResultCard result={expressed} lang={lang} />}
-        </section>
-      )}
-
-      <footer className="mt-auto pt-6 text-center text-xs text-gray-400">
-        Built at Hack the Valley · Bakersfield · for the families who get the mail.
-      </footer>
+      <ChatWidget />
     </main>
   );
 }
 
-function SkeletonCard() {
+function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
   return (
-    <div className="animate-pulse space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="h-7 w-44 rounded-full bg-gray-200" />
-      <div className="h-8 w-3/4 rounded bg-gray-200" />
-      <div className="h-4 w-full rounded bg-gray-100" />
-      <div className="h-4 w-5/6 rounded bg-gray-100" />
+    <div className="inline-flex overflow-hidden rounded-full border border-slate-300 text-xs font-semibold">
+      {(["en", "es"] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => onChange(l)}
+          className={`px-3 py-1 ${lang === l ? "bg-slate-900 text-white" : "text-slate-600"}`}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
     </div>
-  );
-}
-
-function Tab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-4 py-2 transition ${active ? "bg-white text-gray-900 shadow" : "text-gray-500"}`}
-    >
-      {children}
-    </button>
   );
 }
