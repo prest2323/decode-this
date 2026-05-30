@@ -1,11 +1,17 @@
-// EXPORT — template owner Michael (he'll add real pdf-lib fill + flatten + DOCX).
-// The template ships working JSON + CSV export and a readable text fallback so
-// the "data is exportable" promise is demoable today. Pure client-side download.
+// EXPORT — owned by Michael (backend, heavy track). Turns the filled DocumentModel
+// back into a file: PDF (a generated, filled answers document via pdf-lib), JSON
+// (the whole model), and CSV (one row per field). DOCX is a friendly stub for now
+// (task 14 stretch). Pure client-side download — store.exportAs() calls exportDoc().
+//
+// buildExport() is split out, window-free, and synchronous-import-clean (no @/ value
+// imports) so it can be unit-tested directly. exportDoc() wraps it with the download.
+//
+// NOTE: this generates a clean filled PDF from the model. Filling the *original*
+// uploaded AcroForm (pdf-lib getForm().getTextField().setText() + flatten) would need
+// the original PDF bytes threaded through DocumentModel — not in the contract today
+// (flagged for Preston). The generated PDF makes "Export → PDF" real without them.
 import type { DocumentModel, ExportFormat, Field, Lang } from "@/lib/types";
-
-function allFields(doc: DocumentModel): Field[] {
-  return doc.requirements.flatMap((r) => r.fields);
-}
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 function valueStr(v: Field["value"]): string {
   if (v === null || v === undefined) return "";
@@ -13,67 +19,132 @@ function valueStr(v: Field["value"]): string {
   return String(v);
 }
 
-export function buildExport(
-  doc: DocumentModel,
-  format: ExportFormat,
-  lang: Lang = "en",
-): { filename: string; mime: string; content: string } {
-  const base = (doc.fileName || "document").replace(/\.[^.]+$/, "");
-
-  if (format === "json") {
-    const data = {
-      docType: doc.docType[lang],
-      fileName: doc.fileName,
-      fields: allFields(doc).map((f) => ({
-        name: f.name,
-        label: f.label[lang],
-        value: f.value,
-      })),
-      checklist: doc.requirements.map((r) => ({
-        step: r.order,
-        title: r.title[lang],
-        type: r.type,
-        status: r.status,
-      })),
-    };
-    return {
-      filename: `${base}.json`,
-      mime: "application/json",
-      content: JSON.stringify(data, null, 2),
-    };
-  }
-
-  if (format === "csv") {
-    const rows: string[][] = [
-      ["Field", "Value"],
-      ...allFields(doc).map((f) => [f.label[lang], valueStr(f.value)]),
-    ];
-    const csv = rows
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    return { filename: `${base}.csv`, mime: "text/csv", content: csv };
-  }
-
-  // pdf / docx: TODO (Michael — pdf-lib fill + flatten / DOCX template).
-  // Until then, export a clean readable text snapshot so the button always works.
-  const txt = allFields(doc)
-    .map((f) => `${f.label[lang]}: ${valueStr(f.value)}`)
-    .join("\n");
-  return { filename: `${base}.txt`, mime: "text/plain", content: txt };
+function jsonContent(doc: DocumentModel): string {
+  return JSON.stringify(doc, null, 2);
 }
 
-export function exportDoc(
+/** One row per Field: requirement, field name, label, value. */
+function csvContent(doc: DocumentModel, lang: Lang): string {
+  const esc = (c: string) => `"${String(c).replace(/"/g, '""')}"`;
+  const rows: string[][] = [["Requirement", "Field name", "Label", "Value"]];
+  for (const r of doc.requirements) {
+    for (const f of r.fields) {
+      rows.push([r.title[lang], f.name, f.label[lang], valueStr(f.value)]);
+    }
+  }
+  return rows.map((row) => row.map(esc).join(",")).join("\n");
+}
+
+/** A generated, filled PDF of the document's steps + entered values. */
+async function pdfBytes(doc: DocumentModel, lang: Lang): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const W = 612;
+  const H = 792;
+  const M = 50;
+  const maxW = W - M * 2;
+  let page = pdf.addPage([W, H]);
+  let y = H - M;
+
+  const draw = (
+    text: string,
+    opts: { size?: number; f?: typeof font; color?: ReturnType<typeof rgb>; indent?: number } = {},
+  ) => {
+    const size = opts.size ?? 11;
+    const f = opts.f ?? font;
+    const color = opts.color ?? rgb(0.1, 0.12, 0.16);
+    const indent = opts.indent ?? 0;
+    const x = M + indent;
+    const words = (text || "").split(/\s+/);
+    let lineStr = "";
+    const flush = () => {
+      if (y < M + size) {
+        page = pdf.addPage([W, H]);
+        y = H - M;
+      }
+      page.drawText(lineStr, { x, y, size, font: f, color });
+      y -= size + 5;
+      lineStr = "";
+    };
+    for (const w of words) {
+      const trial = lineStr ? `${lineStr} ${w}` : w;
+      if (lineStr && f.widthOfTextAtSize(trial, size) > maxW - indent) {
+        flush();
+        lineStr = w;
+      } else {
+        lineStr = trial;
+      }
+    }
+    if (lineStr) flush();
+  };
+
+  draw(doc.docType[lang] || "Document", { size: 18, f: bold });
+  draw(doc.fileName, { size: 9, color: rgb(0.4, 0.45, 0.5) });
+  y -= 8;
+  if (doc.summary[lang]) {
+    draw(doc.summary[lang], { size: 10, color: rgb(0.25, 0.28, 0.33) });
+    y -= 8;
+  }
+  for (const r of doc.requirements) {
+    draw(`${r.order}. ${r.title[lang]}`, { size: 12, f: bold });
+    for (const fld of r.fields) {
+      draw(`${fld.label[lang]}: ${valueStr(fld.value)}`, { size: 10, indent: 16 });
+    }
+    y -= 4;
+  }
+  return pdf.save();
+}
+
+export interface ExportArtifact {
+  filename: string;
+  mime: string;
+  data: string | Uint8Array;
+}
+
+/** Build the export artifact (no DOM) — unit-testable. Throws for docx (stub). */
+export async function buildExport(
   doc: DocumentModel,
   format: ExportFormat,
   lang: Lang = "en",
-): void {
-  const { filename, mime, content } = buildExport(doc, format, lang);
+): Promise<ExportArtifact> {
+  const base = (doc.fileName || "document").replace(/\.[^.]+$/, "");
+  switch (format) {
+    case "json":
+      return { filename: `${base}.json`, mime: "application/json", data: jsonContent(doc) };
+    case "csv":
+      return { filename: `${base}.csv`, mime: "text/csv", data: csvContent(doc, lang) };
+    case "pdf":
+      return { filename: `${base}-filled.pdf`, mime: "application/pdf", data: await pdfBytes(doc, lang) };
+    case "docx":
+      throw new Error("docx-coming-soon");
+    default:
+      throw new Error(`Unknown export format: ${format}`);
+  }
+}
+
+/** Build the artifact and trigger a client-side download. Called by store.exportAs(). */
+export async function exportDoc(
+  doc: DocumentModel,
+  format: ExportFormat,
+  lang: Lang = "en",
+): Promise<void> {
   if (typeof window === "undefined") return;
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const { filename, mime, data } = await buildExport(doc, format, lang);
+    const blob = new Blob([data as unknown as BlobPart], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    if (format === "docx") {
+      alert("DOCX export is coming soon — use PDF, JSON, or CSV for now.");
+      return;
+    }
+    console.error("export failed", e);
+    alert("Sorry — that export didn't work. Try another format.");
+  }
 }
