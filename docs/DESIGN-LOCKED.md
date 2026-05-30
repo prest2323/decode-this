@@ -48,3 +48,11 @@ Decode This is *"the bilingual kid who reads the mail"* — and answering the le
 - **English-only reply breaks bilingual shot** → `draftReply` now bilingual. ✅ done.
 - **es-MX voice missing on demo laptop** → verify early on the ACTUAL laptop; if shaky, pre-render Spanish summary to a local MP3.
 - **Live API hangs / off-spec response** → demo on mock (`?demo=1`); Gemini output is normalized so it can't crash the UI. ✅ hardened.
+
+## Scope decisions (roadmap reconciliation, 2026-05-30)
+- **Name:** stays **Decode This** (repo, docs, GitHub all branded). "Claro" is a strong alt for the Spanish angle — a 5-minute rename if we choose it later; not worth the churn mid-build.
+- **Stack:** stays **Next.js + Gemini (free)** — already built, deployable, QR-able. We are NOT switching to a single-HTML / Anthropic build.
+- **Core:** keep the **bidirectional** loop (Decode + Find my words). Already built; it's the differentiator.
+- **➕ ADDING (the one great idea from the roadmap): Voice follow-up Q&A.** After decoding a letter, tap the mic and ask *"What if I can't pay?"* → spoken answer in your language, grounded in that document. On-theme ("steps forward with what you're struggling with"), deepens the core instead of bolting on a new app. **Lead (Preston) builds this as a vertical slice.**
+- **🚫 NOT building "Read the Room"** (photo/video body-language / "mind-read"). Honest reasons: (1) off-mission — it has nothing to do with helping someone with scary paperwork; (2) ethically fraught — it needs a whole "no inner-state claims / no facial ID" disclaimer wall, which is a *yellow flag* in a live demo to community-foundation judges; (3) it dilutes the one focused, emotional story that wins; (4) classic scope trap on an 8-hour clock. Park it as a single "what's next" line at most.
+- **Action-box depth (adopted):** decode should surface *amount owed* and *who to call* within the existing fields — "this beats a plain translator." Prompt-level work (MK).
