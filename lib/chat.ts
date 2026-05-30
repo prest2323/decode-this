@@ -1,26 +1,101 @@
 // CHAT — owned by Michael (backend, heavy track). Answers questions grounded in
-// the current document + the step the user is on. The template ships a grounded
-// MOCK answerer (keyword-matched against the document's own flags/requirements)
-// so the chat works offline and on stage. Michael swaps in the real model call
-// (context-stuff the DocumentModel + active requirement) but keeps this fallback.
+// the current document + the step the user is on. With no key (or on any error)
+// it returns a grounded MOCK answer (keyword-matched against the document's own
+// flags/requirements) so chat works offline and on stage. With a key it context-
+// stuffs the DocumentModel + the active requirement into CHAT_SYSTEM, never
+// inventing facts, and returns the requirement ids it grounded on.
 import type { ChatRequest, ChatResult, Lang } from "@/lib/types";
-import { provider } from "@/lib/ai";
+import { provider, geminiClient, anthropicClient, GEMINI_MODEL, ANTHROPIC_MODEL } from "@/lib/ai";
+import { CHAT_SYSTEM } from "@/lib/prompt";
 
 export async function chatAnswer(req: ChatRequest): Promise<ChatResult> {
-  if (provider() === "mock") return groundedMockAnswer(req);
+  const which = provider();
+  if (which === "mock") return groundedMockAnswer(req);
   try {
-    // TODO (Michael): real grounded answer with CHAT_SYSTEM — pass the doc
-    // summary + requirement titles/guidance + the active requirement as context,
-    // bilingual, never invent facts. Fall back to the mock on any error.
-    return groundedMockAnswer(req);
-  } catch {
+    const text = which === "gemini" ? await chatWithGemini(req) : await chatWithAnthropic(req);
+    const answer = text.trim();
+    if (!answer) return groundedMockAnswer(req);
+    return { answer, citedRequirementIds: deriveCited(req) };
+  } catch (e) {
+    console.error("chat failed, using grounded mock:", e);
     return groundedMockAnswer(req);
   }
 }
 
+/** Queue-named alias for the chat entry point. */
+export const answer = chatAnswer;
+
 function pick(lang: Lang, en: string, es: string): string {
   return lang === "es" ? es : en;
 }
+
+// ---------- live, grounded answer ----------
+
+/** Stuff the whole document + the active step into a compact context block. */
+function buildContext(req: ChatRequest): string {
+  const { doc, lang, activeRequirementId } = req;
+  const out: string[] = [];
+  out.push(`DOCUMENT: ${pick(lang, doc.docType.en, doc.docType.es)}`);
+  out.push(`SUMMARY: ${pick(lang, doc.summary.en, doc.summary.es)}`);
+  if (doc.topFlags.length) {
+    out.push(`FLAGS: ${doc.topFlags.map((f) => pick(lang, f.label.en, f.label.es)).join("; ")}`);
+  }
+  out.push("STEPS:");
+  for (const r of doc.requirements) {
+    out.push(`- [${r.id}] ${pick(lang, r.title.en, r.title.es)}: ${pick(lang, r.guidance.en, r.guidance.es)}`);
+  }
+  const active = doc.requirements.find((r) => r.id === activeRequirementId);
+  if (active) {
+    out.push(
+      `\nCURRENT STEP (focus your answer here): [${active.id}] ${pick(lang, active.title.en, active.title.es)}: ${pick(lang, active.guidance.en, active.guidance.es)}`,
+    );
+  }
+  return out.join("\n");
+}
+
+/** Which requirement ids the answer relates to (active step + keyword overlap). */
+function deriveCited(req: ChatRequest): string[] {
+  const { doc, activeRequirementId, question } = req;
+  const ids = new Set<string>();
+  if (activeRequirementId && doc.requirements.some((r) => r.id === activeRequirementId)) {
+    ids.add(activeRequirementId);
+  }
+  const words = question.toLowerCase().split(/\W+/).filter((w) => w.length >= 4);
+  for (const r of doc.requirements) {
+    const hay = `${r.title.en} ${r.title.es} ${r.guidance.en} ${r.guidance.es}`.toLowerCase();
+    if (words.some((w) => hay.includes(w))) ids.add(r.id);
+  }
+  return [...ids].slice(0, 4);
+}
+
+function askLang(lang: Lang): string {
+  return lang === "es" ? "Spanish" : "English";
+}
+
+async function chatWithGemini(req: ChatRequest): Promise<string> {
+  const res = await geminiClient().models.generateContent({
+    model: GEMINI_MODEL,
+    contents: [
+      { role: "user", parts: [{ text: `${buildContext(req)}\n\nQuestion (answer in ${askLang(req.lang)}): ${req.question}` }] },
+    ],
+    config: { systemInstruction: CHAT_SYSTEM, temperature: 0.3 },
+  });
+  return res.text ?? "";
+}
+
+async function chatWithAnthropic(req: ChatRequest): Promise<string> {
+  const msg = await anthropicClient().messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1024,
+    system: CHAT_SYSTEM,
+    messages: [
+      { role: "user", content: `${buildContext(req)}\n\nQuestion (answer in ${askLang(req.lang)}): ${req.question}` },
+    ],
+  });
+  return msg.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
+}
+
+// ---------- offline grounded mock (also the failure fallback) ----------
 
 function groundedMockAnswer(req: ChatRequest): ChatResult {
   const { lang, doc, question } = req;
