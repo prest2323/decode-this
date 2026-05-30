@@ -125,11 +125,13 @@
   width: 46rem; height: 46rem;
   top: -16rem; left: -12rem;
   background: radial-gradient(circle, rgba(15,82,74,0.13), transparent 65%);
+  animation: aurora-a 24s ease-in-out infinite;
 }
 .aurora::after {
   width: 40rem; height: 40rem;
   top: -10rem; right: -10rem;
   background: radial-gradient(circle, rgba(215,90,50,0.11), transparent 65%);
+  animation: aurora-b 28s ease-in-out infinite;
 }
 
 /* Animated warm highlighter swash — a slow pan across the gradient. */
@@ -142,6 +144,8 @@
     rgba(248,224,212,0.7) 0%,
     rgba(244,224,180,0.85) 55%,
     rgba(248,224,212,0.7) 100%);
+  background-size: 200% 100%;
+  animation: gradient-pan 7s linear infinite alternate;
 }
 
 /* Moving sheen — a soft light sweep across cards / titlebars. */
@@ -156,6 +160,8 @@
   inset: 0;
   background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
   transform: translateX(-120%);
+  animation: shimmer 5s ease-in-out infinite;
+  animation-delay: 1.4s;
   pointer-events: none;
 }
 
@@ -198,6 +204,21 @@
   background-size: 22px 22px;
   -webkit-mask-image: radial-gradient(70% 60% at 30% 35%, #000 0%, transparent 75%);
   mask-image: radial-gradient(70% 60% at 30% 35%, #000 0%, transparent 75%);
+}
+
+/* Word-by-word headline reveal — each word rises out of a clipped line box. */
+@keyframes word-rise {
+  from { transform: translateY(115%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.word {
+  display: inline-block;
+  animation: word-rise 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 :root {
