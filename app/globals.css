@@ -1,22 +1,274 @@
 @import "tailwindcss";
 
-/* Fixed light theme. We intentionally do NOT follow the device dark mode:
-   every card hardcodes light colors, so a dark-mode device would otherwise
-   render a broken, washed-out page on the judges' screen. */
-:root {
-  --background: #f8fafc;
-  --foreground: #171717;
-}
+/* ════════════════════════════════════════════════════════════════
+   DECODE THIS — "Warm Paper & Calm" design system
+   A tool that takes the fear out of scary documents should *feel*
+   calm. Warm ivory canvas · eucalyptus-green trust · soft clay & gold
+   accents. No cold slate, no indigo, no alarming reds. Light theme is
+   fixed on purpose (judges' devices may be in dark mode).
+   ════════════════════════════════════════════════════════════════ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* ── Brand kit (extracted from the logo) ─────────────────────────
+     Warm Alabaster 60% · Deep Forest Teal 30% · Terracotta Sun 10% */
+
+  /* Surfaces — Warm Alabaster, the dominant 60% */
+  --color-paper: #faf6ee;        /* app canvas — Warm Alabaster */
+  --color-paper-2: #f1eadb;      /* recessed surfaces */
+  --color-paper-3: #e7dcc8;
+  --color-card: #fffdf8;         /* raised cards — warm white */
+
+  /* Ink — Dark Charcoal for high-contrast type, softer steps below */
+  --color-ink: #1c2a27;          /* Dark Charcoal */
+  --color-ink-soft: #54615c;
+  --color-ink-faint: #6f7d76;    /* darkened for readability on warm paper */
+  --color-line: #dce6e1;         /* Soft Sage — borders */
+  --color-line-strong: #c4d3cc;
+
+  /* Primary — Deep Forest Teal, the 30% structure */
+  --color-calm: #0f524a;         /* Deep Forest Teal */
+  --color-calm-deep: #0a3a34;
+  --color-calm-2: #3c7b70;       /* lighter teal for small accents */
+  --color-calm-soft: #dce6e1;    /* Soft Sage */
+  --color-calm-tint: #ecf3f0;
+
+  /* Accent — Terracotta Sun, muted & earthy so it reads warm, not harsh.
+     Pulled off pure orange toward a dustier clay-terracotta (10% accent). */
+  --color-warm: #c2674b;         /* Terracotta Sun — softened */
+  --color-warm-deep: #9c4d30;
+  --color-warm-soft: #f4e1d6;
+
+  /* Signals — kept gentle, drawn into the brand's earthy register */
+  --color-gold: #c08a2e;         /* fees */
+  --color-gold-soft: #f4e8cf;
+  --color-clay: #7c6a55;         /* legal / fine-print */
+  --color-clay-soft: #ece2d4;
+  --color-olive: #5f7048;        /* tips */
+  --color-olive-soft: #e7ecdb;
+  --color-alert: #c0492a;        /* high-risk / deadlines — terracotta-deep */
+  --color-alert-soft: #f6ddd2;
+
+  /* Type — warm, characterful, human */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-hanken), ui-monospace, monospace;
+
+  /* Soft, diffuse shadows tinted with charcoal — never harsh */
+  --shadow-soft: 0 1px 2px rgba(28, 42, 39, 0.04), 0 8px 22px -10px rgba(28, 42, 39, 0.16);
+  --shadow-lift: 0 2px 6px rgba(28, 42, 39, 0.07), 0 22px 44px -16px rgba(28, 42, 39, 0.24);
+
+  /* Radii — generous, friendly */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  /* Gentle motion */
+  --animate-fade-in: fade-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-scale-in: scale-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pulse-subtle: pulse-subtle 3.2s ease-in-out infinite;
+  --animate-breathe: breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-subtle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 82, 74, 0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(15, 82, 74, 0.12); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+@keyframes floaty-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Gentle hover-free float for the hero preview */
+.floaty-soft {
+  animation: floaty-soft 8s ease-in-out infinite;
+}
+
+/* ── Richer motion set — atmosphere, sheen, drift ──────────────── */
+
+/* Slow-drifting aurora blobs behind the hero. Big, blurred, calm. */
+@keyframes aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(6%, 4%, 0) scale(1.12); }
+  66%      { transform: translate3d(-4%, -3%, 0) scale(0.95); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-7%, 5%, 0) scale(1.15); }
+}
+.aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+.aurora::before {
+  width: 46rem; height: 46rem;
+  top: -16rem; left: -12rem;
+  background: radial-gradient(circle, rgba(15,82,74,0.13), transparent 65%);
+}
+.aurora::after {
+  width: 40rem; height: 40rem;
+  top: -10rem; right: -10rem;
+  background: radial-gradient(circle, rgba(215,90,50,0.11), transparent 65%);
+}
+
+/* Animated warm highlighter swash — a slow pan across the gradient. */
+@keyframes gradient-pan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.swash-anim {
+  background-image: linear-gradient(100deg,
+    rgba(248,224,212,0.7) 0%,
+    rgba(244,224,180,0.85) 55%,
+    rgba(248,224,212,0.7) 100%);
+}
+
+/* Moving sheen — a soft light sweep across cards / titlebars. */
+@keyframes shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+.shimmer-host { position: relative; overflow: hidden; }
+.shimmer-host::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+/* Soft breathing glow ring (for the live spotlight halo). Muted terracotta,
+   low intensity — a gentle warm wash rather than a hard ring. */
+@keyframes halo {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(28,42,39,0.26), 0 0 0 1.5px rgba(194,103,75,0.28), 0 0 20px 3px rgba(194,103,75,0.10); }
+  50%      { box-shadow: 0 0 0 9999px rgba(28,42,39,0.26), 0 0 0 1.5px rgba(194,103,75,0.40), 0 0 30px 6px rgba(194,103,75,0.16); }
+}
+.halo-breathe { animation: halo 3.4s ease-in-out infinite; }
+
+/* Slow vertical drift, larger than floaty-soft, for layered depth. */
+@keyframes drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-16px) rotate(1.5deg); }
+}
+.drift-slow { animation: drift 11s ease-in-out infinite; }
+.drift-slow-2 { animation: drift 9s ease-in-out infinite reverse; }
+
+/* Marquee-free conveyor for the live "typing" dots. */
+@keyframes blink-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+
+/* Step numerals — a warm-to-cool gradient that ties teal + terracotta
+   together, so the 01 / 02 / 03 read as designed, not washed out. */
+.num-gradient {
+  background-image: linear-gradient(150deg, #0f524a 0%, #3c7b70 38%, #c2674b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Faint dot-grid texture for the hero — adds depth without noise. Masked
+   to fade out toward the edges so it never competes with text. */
+.dot-grid {
+  background-image: radial-gradient(rgba(15,82,74,0.13) 1.1px, transparent 1.2px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(70% 60% at 30% 35%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(70% 60% at 30% 35%, #000 0%, transparent 75%);
+}
+
+:root {
+  --background: #faf6ee;
+  --foreground: #1c2a27;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display serif with warm optical sizing */
+.font-display {
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+
+/* Warm atmosphere — faint radial washes + paper grain. Subtle so it
+   adds warmth without ever feeling busy or overwhelming. */
+.bg-atmosphere {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(52rem 36rem at 0% -10%, rgba(15, 82, 74, 0.07), transparent 62%),
+    radial-gradient(44rem 30rem at 100% 0%, rgba(215, 90, 50, 0.06), transparent 58%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+/* Keep app content above the grain */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: var(--color-warm-soft);
+  color: var(--color-warm-deep);
+}
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border: 3px solid var(--color-paper);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-calm-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

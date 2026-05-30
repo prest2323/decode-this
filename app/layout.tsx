@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { DocProvider } from "@/lib/store";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Display: a warm, soft serif with optical sizing — friendly, never cold.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  axes: ["opsz", "SOFT"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Body/UI: a humanist grotesk that reads warm and approachable.
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Decode This — guided document walkthrough",
+  title: "Decode This — a gentler way through hard paperwork",
   description:
-    "Drop in any complex document — a loan application, a benefits form — and we walk you through every step.",
+    "Drop in any complex document — a loan application, a benefits form — and we walk you through every step, calmly.",
 };
 
 export default function RootLayout({
@@ -27,9 +32,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${hanken.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-slate-50 text-slate-900">
+      <body className="min-h-full bg-paper text-ink">
         <DocProvider>{children}</DocProvider>
       </body>
     </html>

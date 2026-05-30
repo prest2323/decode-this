@@ -1,49 +1,50 @@
 "use client";
-// WORKSPACE — owned by Preston (Lead). Wires every teammate's component through
-// useDoc() with minimal prop threading. No doc -> the upload hero; doc loaded ->
-// the three-lens workspace: Protect + Checklist (left), the guided DocCanvas +
-// TourController (center), and the floating ChatWidget. Don't put visual polish
-// here — that lives in the components.
+// WORKSPACE — owned by Preston (Lead). No doc -> the marketing Landing; doc
+// loaded -> a calm two-column walkthrough: the checklist (the map) on the left,
+// the document + spotlight + one focused guide card in the center, and a quiet
+// "Ask" chat. No Protect column, no step counter — just one step at a time.
+import { useEffect } from "react";
 import { useDoc } from "@/lib/store";
 import type { Lang } from "@/lib/types";
-import Uploader from "@/components/Uploader";
-import RiskSummary from "@/components/RiskSummary";
+import Landing from "@/components/Landing";
+import { Logo } from "@/components/Logo";
 import ChecklistPanel from "@/components/ChecklistPanel";
 import DocCanvas from "@/components/DocCanvas";
-import TourController from "@/components/TourController";
 import ChatWidget from "@/components/ChatWidget";
 
 export default function Page() {
-  const { doc, lang, setLang, exportAs, reset } = useDoc();
+  const { doc, lang, setLang, exportAs, reset, next, prev } = useDoc();
 
-  if (!doc) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-5 py-10">
-        <header className="text-center">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Decode This</h1>
-          <p className="mt-2 max-w-md text-slate-500">
-            Drop in a scary, complex document — a loan application, a benefits form — and we&apos;ll
-            break it down and hold your hand through every step.
-          </p>
-        </header>
-        <Uploader />
-      </main>
-    );
-  }
+  // Arrow keys step through the walkthrough (ignored while typing in a field).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (e.key === "ArrowRight") next();
+      else if (e.key === "ArrowLeft") prev();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [next, prev]);
+
+  if (!doc) return <Landing />;
 
   return (
-    <main className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+    <main className="bg-atmosphere flex h-screen flex-col">
+      <header className="flex items-center gap-3 border-b border-line bg-card/80 px-4 py-2.5 backdrop-blur-xl">
+        <Logo size={26} withText={false} />
         <button
           type="button"
           onClick={reset}
-          className="text-sm font-semibold text-slate-500 hover:text-slate-800"
+          className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-line-strong hover:bg-paper-2 hover:text-ink"
         >
           ← New
         </button>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold text-slate-900">{doc.docType[lang]}</div>
-          <div className="truncate text-xs text-slate-400">{doc.fileName}</div>
+          <div className="font-display truncate text-[0.95rem] font-semibold text-ink">
+            {doc.docType[lang]}
+          </div>
+          <div className="font-mono truncate text-xs text-ink-faint">{doc.fileName}</div>
         </div>
         <LangToggle lang={lang} onChange={setLang} />
         <div className="hidden items-center gap-1 sm:flex">
@@ -52,7 +53,7 @@ export default function Page() {
               key={f}
               type="button"
               onClick={() => exportAs(f)}
-              className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-calm-2 hover:bg-calm-tint hover:text-calm-deep"
             >
               {f.toUpperCase()}
             </button>
@@ -60,16 +61,12 @@ export default function Page() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[320px_1fr]">
-        <aside className="flex min-h-0 flex-col gap-3">
-          <RiskSummary />
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[300px_1fr]">
+        <aside className="hidden min-h-0 flex-col lg:flex">
           <ChecklistPanel />
         </aside>
-        <section className="flex min-h-0 flex-col gap-3">
-          <div className="min-h-0 flex-1">
-            <DocCanvas />
-          </div>
-          <TourController />
+        <section className="min-h-0">
+          <DocCanvas />
         </section>
       </div>
 
@@ -80,13 +77,15 @@ export default function Page() {
 
 function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
   return (
-    <div className="inline-flex overflow-hidden rounded-full border border-slate-300 text-xs font-semibold">
+    <div className="inline-flex overflow-hidden rounded-lg border border-line bg-paper-2 p-0.5 text-xs font-semibold">
       {(["en", "es"] as const).map((l) => (
         <button
           key={l}
           type="button"
           onClick={() => onChange(l)}
-          className={`px-3 py-1 ${lang === l ? "bg-slate-900 text-white" : "text-slate-600"}`}
+          className={`rounded-md px-3 py-1 transition ${
+            lang === l ? "bg-calm text-paper shadow-soft" : "text-ink-soft hover:text-ink"
+          }`}
         >
           {l.toUpperCase()}
         </button>

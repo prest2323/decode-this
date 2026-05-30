@@ -6,12 +6,12 @@ import { useDoc } from "@/lib/store";
 import type { Flag, Lang, FlagKind } from "@/lib/types";
 
 const STYLE: Record<FlagKind, { icon: string; cls: string }> = {
-  deadline:           { icon: "⏰", cls: "bg-red-100 text-red-800 ring-red-200" },
-  fee:                { icon: "💸", cls: "bg-amber-100 text-amber-800 ring-amber-200" },
-  "legal-risk":       { icon: "⚖️", cls: "bg-purple-100 text-purple-800 ring-purple-200" },
-  "background-check": { icon: "🔎", cls: "bg-blue-100 text-blue-800 ring-blue-200" },
-  scam:               { icon: "🚩", cls: "bg-rose-100 text-rose-900 ring-rose-300" },
-  tip:                { icon: "💡", cls: "bg-emerald-100 text-emerald-800 ring-emerald-200" },
+  deadline:           { icon: "⏰", cls: "bg-alert-soft text-alert ring-alert/15" },
+  fee:                { icon: "💸", cls: "bg-gold-soft text-gold ring-gold/20" },
+  "legal-risk":       { icon: "⚖️", cls: "bg-clay-soft text-clay ring-clay/20" },
+  "background-check": { icon: "🔎", cls: "bg-calm-soft text-calm-deep ring-calm/15" },
+  scam:               { icon: "🚩", cls: "bg-alert-soft text-alert ring-alert/30" },
+  tip:                { icon: "💡", cls: "bg-olive-soft text-olive ring-olive/20" },
 };
 
 const PRIORITY: Record<FlagKind, number> = {
@@ -28,9 +28,9 @@ export function FlagChip({ flag, lang }: { flag: Flag; lang: Lang }) {
   if (!style) return null;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-all duration-200 hover:scale-105 ${style.cls}`}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[0.78rem] font-medium ring-1 transition-transform duration-200 hover:-translate-y-0.5 ${style.cls}`}
     >
-      <span>{style.icon}</span>
+      <span className="text-[0.85rem] leading-none">{style.icon}</span>
       <span>
         {flag.label[lang]}
         {flag.date ? ` · ${flag.date}` : ""}
@@ -48,20 +48,29 @@ export default function RiskSummary() {
   );
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
-      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600">
-        <span className="animate-pulse">🛡️</span> {lang === "es" ? "Proteger" : "Protect"}
+    <section className="animate-fade-in rounded-xl border border-line bg-card p-5 shadow-soft">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-calm">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-calm-soft text-calm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l7 3v5c0 4.4-3 7.5-7 8.5-4-1-7-4.1-7-8.5V6l7-3z" />
+            <path d="M9 12l2 2 4-4.5" />
+          </svg>
+        </span>
+        {lang === "es" ? "Proteger" : "Protect"}
       </div>
-      <h2 className="mt-2 text-lg font-extrabold tracking-tight text-slate-900">{doc.docType[lang]}</h2>
-      
-      <div className="mt-3 rounded-xl bg-white/80 p-5 text-base leading-relaxed text-slate-700 shadow-inner border border-slate-100">
+
+      <h2 className="font-display mt-3 text-lg font-semibold leading-snug tracking-tight text-ink">
+        {doc.docType[lang]}
+      </h2>
+
+      <p className="mt-3 rounded-lg border-l-2 border-calm-2 bg-paper-2/60 p-4 text-[0.95rem] leading-relaxed text-ink-soft">
         {doc.summary[lang]}
-      </div>
+      </p>
 
       {sortedFlags.length > 0 && (
         <div className="mt-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {lang === "es" ? "Alertas y Detalles" : "Alerts & Details"}
+          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
+            {lang === "es" ? "Cosas a tener en cuenta" : "Things to keep in mind"}
           </h3>
           <div className="flex flex-wrap gap-2">
             {sortedFlags.map((f, i) => (

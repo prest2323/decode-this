@@ -30,23 +30,23 @@ export default function DocCanvas() {
   return (
     <div className="flex h-full flex-col">
       {doc.pages.length > 1 && (
-        <div className="mb-2 flex items-center justify-center gap-3 text-sm text-slate-600">
+        <div className="mb-2 flex items-center justify-center gap-3 text-sm text-ink-soft">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="rounded-md border border-slate-300 px-2 py-0.5 disabled:opacity-40"
+            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
           >
             ‹ Prev
           </button>
-          <span>
+          <span className="font-medium text-ink">
             Page {pg.index + 1} of {doc.pages.length}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(doc.pages.length - 1, p + 1))}
             disabled={page >= doc.pages.length - 1}
-            className="rounded-md border border-slate-300 px-2 py-0.5 disabled:opacity-40"
+            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
           >
             Next ›
           </button>
@@ -55,7 +55,7 @@ export default function DocCanvas() {
 
       <div className="flex flex-1 items-start justify-center overflow-auto">
         <div
-          className="relative w-full max-w-[640px] rounded-lg border border-slate-300 shadow-sm"
+          className="relative w-full max-w-[640px] rounded-xl border border-line-strong bg-card shadow-soft"
           style={{ aspectRatio: `${pg.width} / ${pg.height}` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}

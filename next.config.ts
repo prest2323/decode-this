@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // Our own brand mark is an SVG served via next/image — allow it.
+  images: {
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+  },
 };
 
 export default nextConfig;

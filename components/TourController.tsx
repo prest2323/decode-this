@@ -30,16 +30,19 @@ export default function TourController() {
   const t = (en: string, es: string) => (lang === "es" ? es : en);
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-md transition-all duration-300">
+    <div className="flex flex-col gap-2 rounded-xl border border-line bg-card p-4 shadow-soft">
       {allDone ? (
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-3 text-white shadow-sm animate-pulse-subtle">
+        <div
+          className="flex items-center justify-between gap-4 rounded-lg px-4 py-3 text-paper shadow-soft animate-pulse-subtle"
+          style={{ background: "linear-gradient(135deg, #1c5959 0%, #0f524a 60%, #0a3a34 100%)" }}
+        >
           <div className="flex items-center gap-2">
             <span className="text-lg">🎉</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold leading-none">
+              <div className="text-xs font-semibold leading-none">
                 {t("Ready to File!", "¡Listo para presentar!")}
               </div>
-              <div className="mt-0.5 text-[10px] text-emerald-50 leading-none">
+              <div className="mt-1 text-[10px] leading-none text-paper/80">
                 {t("All steps completed successfully.", "Todos los pasos completados con éxito.")}
               </div>
             </div>
@@ -47,7 +50,7 @@ export default function TourController() {
           <button
             type="button"
             onClick={() => exportAs("pdf")}
-            className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-sm transition-all duration-200 hover:bg-emerald-50 hover:scale-[1.03] active:scale-95 shrink-0"
+            className="shrink-0 rounded-lg bg-paper px-3 py-1.5 text-xs font-semibold text-calm-deep shadow-soft transition-all duration-200 hover:bg-card hover:scale-[1.03] active:scale-95"
           >
             📥 {t("Export Package", "Exportar paquete")}
           </button>
@@ -58,26 +61,26 @@ export default function TourController() {
             type="button"
             onClick={prev}
             disabled={activeIndex === 0}
-            className="rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-slate-200 transition duration-200"
+            className="rounded-lg border border-line px-3.5 py-2 text-xs font-semibold text-ink-soft transition duration-200 hover:border-line-strong hover:bg-paper-2 disabled:opacity-30 disabled:hover:border-line disabled:hover:bg-transparent"
           >
             ‹ {t("Back", "Atrás")}
           </button>
-          
-          <div className="flex-1 flex flex-col gap-1.5">
+
+          <div className="flex flex-1 flex-col gap-1.5">
             <div
               role="progressbar"
               aria-valuenow={value}
               aria-valuemin={1}
               aria-valuemax={total}
               aria-label="Walkthrough progress"
-              className="h-2 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/20"
+              className="h-2 w-full overflow-hidden rounded-sm bg-paper-2"
             >
               <div
-                className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                className="h-full rounded-sm bg-calm transition-all duration-500"
                 style={{ width: `${(value / total) * 100}%` }}
               />
             </div>
-            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
               {t("Step", "Paso")} {value} {t("of", "de")} {total}
             </div>
           </div>
@@ -88,7 +91,7 @@ export default function TourController() {
               if (active) setStatus(active.id, "done");
               next();
             }}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition duration-200"
+            className="rounded-lg bg-calm px-4 py-2 text-xs font-semibold text-paper shadow-soft transition duration-200 hover:bg-calm-deep"
           >
             {activeIndex === total - 1 ? t("Finish ✓", "Terminar ✓") : t("Next ›", "Siguiente ›")}
           </button>

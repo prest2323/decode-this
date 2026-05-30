@@ -17,9 +17,18 @@ export default function FieldOverlay({ field }: { field: Field }) {
     height: `${field.rect.h * 100}%`,
   };
 
-  const ring = isActive
-    ? "ring-2 ring-amber-400 z-40 bg-amber-50/90"
-    : "ring-1 ring-slate-300 z-10 bg-white/85";
+  const isFilled =
+    field.kind === "checkbox"
+      ? field.value === true
+      : typeof field.value === "string" && field.value.trim().length > 0;
+
+  // Filled fields settle to a calm green; the active-but-empty field glows warm
+  // to draw the eye; everything else is a quiet outline.
+  const ring = isFilled
+    ? "ring-2 ring-calm/55 z-30 bg-calm-tint"
+    : isActive
+      ? "ring-2 ring-warm z-40 bg-warm-soft/90"
+      : "ring-1 ring-line-strong z-10 bg-card/85";
 
   if (field.kind === "checkbox") {
     return (
@@ -29,7 +38,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
         checked={field.value === true}
         onChange={(e) => setFieldValue(field.id, e.target.checked)}
         style={style}
-        className={`absolute cursor-pointer accent-amber-500 ${ring}`}
+        className={`absolute cursor-pointer accent-calm transition-all duration-200 ${ring}`}
       />
     );
   }
@@ -44,7 +53,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
       placeholder={field.placeholder}
       onChange={(e) => setFieldValue(field.id, e.target.value)}
       style={style}
-      className={`absolute rounded-sm px-1 text-[clamp(7px,1.3vw,14px)] text-slate-900 outline-none placeholder:text-slate-400 ${ring}`}
+      className={`absolute rounded-sm px-1 text-[clamp(7px,1.3vw,14px)] text-ink outline-none transition-all duration-200 placeholder:text-ink-faint ${ring}`}
     />
   );
 }
