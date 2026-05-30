@@ -434,17 +434,25 @@ function ProtectVisual() {
         </span>
         Plain-language summary
       </div>
-      <div className="mt-3 space-y-2 rounded-xl bg-paper/70 p-3.5">
-        <div className="h-2.5 w-full rounded-full bg-line/80" />
-        <div className="h-2.5 w-11/12 rounded-full bg-line/80" />
-        <div className="h-2.5 w-3/4 rounded-full bg-line/70" />
-      </div>
+      <Reveal dir="none" delay={120} amount={0.6}>
+        <div className="mt-3 space-y-2 rounded-xl bg-paper/70 p-3.5">
+          <div className="h-2.5 w-full rounded-full bg-line/80" />
+          <div className="h-2.5 w-11/12 rounded-full bg-line/80" />
+          <div className="h-2.5 w-3/4 rounded-full bg-line/70" />
+        </div>
+      </Reveal>
       <div className="mt-5 text-[11px] font-semibold uppercase tracking-[0.15em] text-ink-faint">Watch out for</div>
       <div className="mt-3 space-y-2">
-        <FlagRow tone="warm" label="Application deadline" detail="Due Jun 30, 2026" />
-        <FlagRow tone="gold" label="Up-front cost" detail="$2,500 packaging fee" />
-        <FlagRow tone="calm" label="Background check" detail="All 20%+ owners" />
-        <FlagRow tone="clay" label="Personal guarantee" detail="Your assets at risk" />
+        {[
+          { tone: "warm", label: "Application deadline", detail: "Due Jun 30, 2026" },
+          { tone: "gold", label: "Up-front cost", detail: "$2,500 packaging fee" },
+          { tone: "calm", label: "Background check", detail: "All 20%+ owners" },
+          { tone: "clay", label: "Personal guarantee", detail: "Your assets at risk" },
+        ].map((f, i) => (
+          <Reveal key={f.label} dir="left" delay={i * 110} amount={0.5}>
+            <FlagRow tone={f.tone as "warm" | "gold" | "calm" | "clay"} label={f.label} detail={f.detail} />
+          </Reveal>
+        ))}
       </div>
     </Frame>
   );
@@ -481,14 +489,16 @@ function GuideVisual() {
           <div className="h-5 rounded-md border border-line bg-card" />
         </div>
         {/* spotlit group — soft warm halo, gently breathing */}
-        <div className="halo-breathe mt-2.5 rounded-xl p-2" style={{ background: "rgba(248,224,212,0.18)" }}>
-          <div className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-warm-deep">Business address</div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-3 h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
-            <div className="col-span-2 h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
-            <div className="h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
+        <Reveal dir="none" delay={160} amount={0.5}>
+          <div className="halo-breathe mt-2.5 rounded-xl p-2" style={{ background: "rgba(248,224,212,0.18)" }}>
+            <div className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-warm-deep">Business address</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-3 h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
+              <div className="col-span-2 h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
+              <div className="h-5 rounded-md border border-warm/40 bg-warm-soft/50" />
+            </div>
           </div>
-        </div>
+        </Reveal>
         <div className="mt-2.5 space-y-2.5 opacity-60">
           <div className="h-5 rounded-md border border-line bg-card" />
           <div className="grid grid-cols-3 gap-2">
@@ -497,18 +507,20 @@ function GuideVisual() {
             <div className="h-5 rounded-md border border-line bg-card" />
           </div>
         </div>
-        <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-line bg-card/95 p-3 shadow-lift backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-calm">Guide</div>
-            <div className="flex gap-1">
-              {[0, 1, 2].map((d) => (
-                <span key={d} className="h-1.5 w-1.5 rounded-full bg-calm-2" style={{ animation: "blink-dot 1.4s ease-in-out infinite", animationDelay: `${d * 0.18}s` }} />
-              ))}
+        <Reveal dir="up" delay={340} amount={0.5} className="absolute bottom-3 left-3 right-3">
+          <div className="rounded-xl border border-line bg-card/95 p-3 shadow-lift backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-calm">Guide</div>
+              <div className="flex gap-1">
+                {[0, 1, 2].map((d) => (
+                  <span key={d} className="h-1.5 w-1.5 rounded-full bg-calm-2" style={{ animation: "blink-dot 1.4s ease-in-out infinite", animationDelay: `${d * 0.18}s` }} />
+                ))}
+              </div>
             </div>
+            <div className="font-display mt-1 text-[12px] font-semibold text-ink">Fill in your business address</div>
+            <div className="mt-0.5 text-[10px] leading-relaxed text-ink-soft">Street, city, state, ZIP — all one calm step.</div>
           </div>
-          <div className="font-display mt-1 text-[12px] font-semibold text-ink">Fill in your business address</div>
-          <div className="mt-0.5 text-[10px] leading-relaxed text-ink-soft">Street, city, state, ZIP — all one calm step.</div>
-        </div>
+        </Reveal>
       </div>
     </Frame>
   );
@@ -518,23 +530,29 @@ function AskVisual() {
   return (
     <Frame label="Ask · grounded in your step">
       <div className="space-y-3">
-        <div className="rounded-lg bg-calm-tint px-3 py-1.5 text-center text-[10px] font-medium text-calm-deep">
-          On step 7 · “Declare ownership”
-        </div>
-        <div className="flex justify-end">
-          <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-calm px-3.5 py-2.5 text-[12px] font-medium text-paper">
-            What&apos;s a personal guarantee?
+        <Reveal dir="none" amount={0.6}>
+          <div className="rounded-lg bg-calm-tint px-3 py-1.5 text-center text-[10px] font-medium text-calm-deep">
+            On step 7 · “Declare ownership”
           </div>
-        </div>
-        <div className="flex items-start gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-calm-soft text-calm">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.3 9 9 0 0 1-3.8-.7L3 20l1.3-3.8A8.38 8.38 0 0 1 3.5 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z" /></svg>
-          </span>
-          <div className="max-w-[82%] rounded-2xl rounded-tl-sm border border-line bg-card px-3.5 py-2.5 text-[12px] leading-relaxed text-ink">
-            It means you personally promise to repay the loan if your business
-            can&apos;t — your own savings or home could be on the line.
+        </Reveal>
+        <Reveal dir="left" delay={150} amount={0.6}>
+          <div className="flex justify-end">
+            <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-calm px-3.5 py-2.5 text-[12px] font-medium text-paper">
+              What&apos;s a personal guarantee?
+            </div>
           </div>
-        </div>
+        </Reveal>
+        <Reveal dir="up" delay={340} amount={0.5}>
+          <div className="flex items-start gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-calm-soft text-calm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.3 9 9 0 0 1-3.8-.7L3 20l1.3-3.8A8.38 8.38 0 0 1 3.5 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z" /></svg>
+            </span>
+            <div className="max-w-[82%] rounded-2xl rounded-tl-sm border border-line bg-card px-3.5 py-2.5 text-[12px] leading-relaxed text-ink">
+              It means you personally promise to repay the loan if your business
+              can&apos;t — your own savings or home could be on the line.
+            </div>
+          </div>
+        </Reveal>
         <div className="flex items-center gap-2 pl-9 text-[10px] text-ink-faint">
           <span className="flex gap-1">
             {[0, 1, 2].map((d) => (
