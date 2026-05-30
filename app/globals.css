@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #f8fafc;          /* slate-50 page */
-  --color-surface: #ffffff;
+  --color-bg: #f3f4f6;          /* slate-100 page bg */
+  --color-surface: rgba(255, 255, 255, 0.45);
   --color-ink: #0f172a;         /* slate-900 text */
   --color-muted: #64748b;       /* slate-500 */
   --color-brand: #0284c7;       /* sky-600 — accent/spotlight */
   --color-brand-soft: #e0f2fe;  /* sky-100 */
   --color-danger: #dc2626;      /* deadlines/fees */
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --radius-lg: 1rem;
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --radius-lg: 1.5rem;
 }
 
 html, body {
-  background: var(--color-bg);
+  background: radial-gradient(circle at 10% 20%, rgba(224, 242, 254, 0.5) 0%, rgba(243, 244, 246, 0.8) 90%);
   color: var(--color-ink);
+  min-height: 100vh;
 }
 
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium iOS 26 Glassmorphism utility */
+.ios-glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 10px 40px -10px rgba(0, 0, 0, 0.03),
+    inset 0 1px 2px rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.02);
+}
+
+.ios-glass-hover:hover {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 
+    0 15px 45px -5px rgba(2, 132, 199, 0.06),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.ios-glass-active {
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Ultra premium animations */
+@keyframes fluid-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(2, 132, 199, 0.05);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: fluid-pulse 2s infinite ease-in-out;
+}
+
+@keyframes float-breath {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(0.5deg); }
+}
+
+.animate-float-breath {
+  animation: float-breath 6s ease-in-out infinite;
 }
 
 /* Custom premium scrollbar styling */
@@ -30,24 +80,28 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: rgba(0, 0, 0, 0.02);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(148, 163, 184, 0.7);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 /* Fade-in animation helper */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

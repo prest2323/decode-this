@@ -18,10 +18,10 @@ export default function FieldOverlay({ field }: { field: Field }) {
     height: `${field.rect.h * 100}%`,
   };
 
-  // Base styling for the active vs inactive fields
+  // Glassy iOS 26 focus and inactive ring styles
   const ring = isActive
-    ? "ring-2 ring-brand border-brand bg-brand-soft/90 z-40 scale-[1.02] shadow-md shadow-brand/10 animate-pulse-subtle"
-    : "ring-1 ring-slate-300 border-slate-300 bg-white/85 z-10 opacity-70 hover:opacity-95 hover:ring-slate-400 hover:scale-[1.01]";
+    ? "ring-2 ring-brand border-brand bg-brand-soft/85 z-40 scale-[1.02] shadow-md shadow-brand/10 animate-pulse-subtle"
+    : "ring-1 ring-white/50 border-white/40 bg-white/35 backdrop-blur-[2px] z-10 opacity-75 hover:opacity-95 hover:bg-white/55 hover:scale-[1.01] hover:shadow-sm";
 
   // Checkbox Field
   if (field.kind === "checkbox") {
@@ -45,7 +45,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
         value={typeof field.value === "string" ? field.value : ""}
         onChange={(e) => setFieldValue(field.id, e.target.value)}
         style={style}
-        className={`pointer-events-auto absolute rounded-md px-1.5 text-[clamp(7px,1.2vw,14px)] font-semibold text-slate-800 outline-none transition-all duration-350 shadow-sm ${ring}`}
+        className={`pointer-events-auto absolute rounded-md px-1.5 text-[clamp(7px,1.2vw,14px)] font-bold text-slate-800 outline-none transition-all duration-350 shadow-sm ${ring}`}
       >
         <option value="">--</option>
         {field.options?.map((opt) => (
@@ -71,7 +71,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
     );
   }
 
-  // Signature Field (Beautiful calligraphic toggle)
+  // Signature Field (Beautiful calligraphic toggle with cream frosted paper style)
   if (field.kind === "signature") {
     const isSigned = !!field.value;
     return (
@@ -82,8 +82,8 @@ export default function FieldOverlay({ field }: { field: Field }) {
         style={style}
         className={`pointer-events-auto absolute rounded-md flex items-center justify-between px-2.5 text-[clamp(6px,1.1vw,14px)] border transition-all duration-500 shadow-sm ${
           isSigned
-            ? "font-serif italic text-blue-600 bg-amber-50/60 border-amber-300 font-bold tracking-wide"
-            : "text-slate-400 bg-slate-50/90 border-slate-300 border-dashed hover:bg-slate-100/80"
+            ? "font-serif italic text-blue-600 bg-amber-50/70 border-amber-300 font-bold tracking-wide"
+            : "text-slate-500 bg-white/45 border-white/50 border-dashed hover:bg-white/60"
         } ${ring}`}
       >
         <span className="truncate">
@@ -108,7 +108,7 @@ export default function FieldOverlay({ field }: { field: Field }) {
       placeholder={field.placeholder ?? field.label[lang]}
       onChange={(e) => setFieldValue(field.id, e.target.value)}
       style={style}
-      className={`pointer-events-auto absolute rounded-md px-2 text-[clamp(7px,1.2vw,14px)] font-medium text-slate-800 outline-none placeholder:text-slate-400 border transition-all duration-350 shadow-sm ${ring}`}
+      className={`pointer-events-auto absolute rounded-md px-2 text-[clamp(7px,1.2vw,14px)] font-bold text-slate-800 outline-none placeholder:text-slate-400 border transition-all duration-350 shadow-sm ${ring}`}
     />
   );
 }
