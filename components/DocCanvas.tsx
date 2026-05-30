@@ -65,11 +65,16 @@ export default function DocCanvas() {
   const [page, setPage] = useState(0);
   const [pdf, setPdf] = useState<PdfRender | null>(null);
 
-  // jump to the page the active step lives on
+  // Jump to the page the active step lives on. Keyed on the page NUMBER, not the
+  // whole `active` object: `active` is a fresh reference on every field edit, so
+  // keying on it re-fired this on every keystroke and yanked the canvas back,
+  // fighting manual Prev/Next paging. The page number only changes when the tour
+  // moves to a step on a different page — exactly when we want to re-sync.
+  const activePage = active?.spotlight?.page;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync canvas to the active step's page
-    if (active?.spotlight) setPage(active.spotlight.page);
-  }, [active]);
+    if (activePage != null) setPage(activePage);
+  }, [activePage]);
 
   // When a doc loads, render the uploaded PDF (if any) page-by-page via pdfjs.
   const docId = doc?.id ?? null;
