@@ -19,14 +19,14 @@ export default function ChecklistPanel() {
   const done = reqs.filter((r) => r.status === "done").length;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-slate-200 bg-white">
+    <section className="flex min-h-0 flex-1 flex-col rounded-md border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <div className="text-sm font-bold text-slate-900">✅ Checklist</div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs font-black uppercase tracking-wider text-slate-800">✅ Checklist</div>
+        <div className="text-[11px] font-bold text-slate-500">
           {done}/{reqs.length} done
         </div>
       </div>
-      <ol className="min-h-0 flex-1 overflow-auto p-2">
+      <ol className="min-h-0 flex-1 overflow-auto p-2 space-y-1">
         {reqs.map((r, i) => {
           const isActive = i === activeIndex;
           return (
@@ -34,27 +34,29 @@ export default function ChecklistPanel() {
               <button
                 type="button"
                 onClick={() => goTo(i)}
-                className={`flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition ${
-                  isActive ? "bg-amber-50 ring-1 ring-amber-200" : "hover:bg-slate-50"
+                className={`flex w-full items-start gap-2 rounded px-2.5 py-2 text-left transition select-none cursor-pointer ${
+                  isActive 
+                    ? "bg-slate-100 ring-1 ring-slate-350 shadow-sm" 
+                    : "hover:bg-slate-50/70"
                 }`}
               >
                 <span
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
                     r.status === "done"
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-emerald-600 text-white"
                       : isActive
-                        ? "bg-amber-400 text-white"
-                        : "bg-slate-200 text-slate-600"
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-150 text-slate-600 border border-slate-200/50"
                   }`}
                 >
                   {r.status === "done" ? "✓" : r.order}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-slate-800">
+                  <span className="block truncate text-xs font-bold text-slate-800">
                     {TYPE_ICON[r.type]} {r.title[lang]}
                   </span>
                   {r.flags.length > 0 && (
-                    <span className="block truncate text-xs text-slate-400">
+                    <span className="block truncate text-[10px] font-medium text-slate-400">
                       {r.flags.map((f) => f.label[lang]).join(" · ")}
                     </span>
                   )}
