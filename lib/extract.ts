@@ -621,63 +621,8 @@ function imageDims(mimeType: string, base64: string): { width: number; height: n
   return def;
 }
 
-// Draw a CLEAN form page from the model's own fields (mock-style), so a blurry
-// photo is replaced by a crisp, readable reconstruction whose boxes line up exactly
-// with the overlays. Generated entirely from the AI's analysis — no template assets.
-const SYNTH_W = 850;
-const SYNTH_H = 1100;
-function escSvg(s: string): string {
-  return s.replace(/[<>&]/g, (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;"));
-}
-function synthPageSvg(model: DocumentModel, fields: Field[], pageIdx: number): string {
-  const boxes = fields
-    .map((f) => {
-      const x = f.rect.x * SYNTH_W;
-      const y = f.rect.y * SYNTH_H;
-      const w = Math.max(8, f.rect.w * SYNTH_W);
-      const h = Math.max(14, f.rect.h * SYNTH_H);
-      const label = escSvg(f.label.en || f.name);
-      return (
-        `<text x="${x.toFixed(1)}" y="${(y - 5).toFixed(1)}" font-size="12" fill="#475569" font-family="Arial, sans-serif">${label}${f.required ? " *" : ""}</text>` +
-        `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" rx="3"/>`
-      );
-    })
-    .join("");
-  const header =
-    `<text x="40" y="54" font-size="20" font-weight="700" fill="#0f172a" font-family="Arial, sans-serif">${escSvg(model.docType.en || "Document")}</text>` +
-    `<text x="40" y="78" font-size="12" fill="#64748b" font-family="Arial, sans-serif">Reconstructed form · page ${pageIdx + 1}</text>`;
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${SYNTH_W}" height="${SYNTH_H}" viewBox="0 0 ${SYNTH_W} ${SYNTH_H}">` +
-    `<rect width="${SYNTH_W}" height="${SYNTH_H}" fill="#eef2f7"/>` +
-    `<rect x="18" y="18" width="${SYNTH_W - 36}" height="${SYNTH_H - 36}" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>` +
-    header +
-    boxes +
-    `</svg>`;
-  return "data:image/svg+xml," + encodeURIComponent(svg);
-}
-/** One clean synthetic page per page-index that has fields. [] when there are no
- *  fillable fields to draw (caller then shows the upload or a placeholder). */
-function syntheticPages(model: DocumentModel): DocPage[] {
-  const fields = model.requirements.flatMap((r) => r.fields);
-  if (!fields.length) return [];
-  const byPage = new Map<number, Field[]>();
-  for (const f of fields) {
-    const list = byPage.get(f.rect.page);
-    if (list) list.push(f);
-    else byPage.set(f.rect.page, [f]);
-  }
-  return [...byPage.keys()]
-    .sort((a, b) => a - b)
-    .map((idx) => ({ index: idx, image: synthPageSvg(model, byPage.get(idx) ?? [], idx), width: SYNTH_W, height: SYNTH_H }));
-}
-
-/** A page the canvas can render for a live upload (the model returns no image).
- *  Prefer a clean reconstructed form drawn from the extracted fields — so a blurry
- *  photo becomes a crisp, aligned page — else the upload itself (nothing to draw)
- *  or a neutral placeholder. */
-function buildPages(model: DocumentModel, parsed: ParsedFile, file: string): DocPage[] {
-  const synthetic = syntheticPages(model);
-  if (synthetic.length) return synthetic;
+/** A page the canvas can render for a live upload (the model doesn't return one). */
+function buildPages(parsed: ParsedFile, file: string): DocPage[] {
   if (!parsed.isText && parsed.mimeType.startsWith("image/")) {
     const { width, height } = imageDims(parsed.mimeType, parsed.data);
     return [{ index: 0, image: file, width, height }];
@@ -734,7 +679,7 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
     if (acro.length) model = attachRealRects(model, acro);
     model = { ...model, requirements: groupAndOrder(model.requirements) };
     // (4) the model doesn't render pages; give the canvas one so it never crashes.
-    if (model.pages.length === 0) model = { ...model, pages: buildPages(model, parsed, req.file) };
+    if (model.pages.length === 0) model = { ...model, pages: buildPages(parsed, req.file) };
     cacheSet(key, model);
     return model;
   } catch (e) {
