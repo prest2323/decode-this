@@ -176,6 +176,98 @@ function docPage(v: unknown, idx: number): DocPage {
   };
 }
 
+// ---------- grouping + difficulty + ordering (runs inside normalizeDoc) ----------
+const DIFF_RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+const RANK_DIFF: Difficulty[] = ["easy", "medium", "hard"];
+const maxDiff = (...ds: Difficulty[]): Difficulty => RANK_DIFF[Math.max(...ds.map((d) => DIFF_RANK[d]))];
+
+/** Which logical unit a field belongs to, for safety-net grouping. */
+function unitOf(f: Field): "address" | "name" | null {
+  const s = `${f.name} ${f.label.en} ${f.label.es}`.toLowerCase();
+  if (/street|address|addr|\bcity\b|\bstate\b|\bzip\b|postal|\bapt\b|suite|calle|ciudad|estado|direcci/.test(s)) return "address";
+  if (/first.?name|last.?name|middle.?name|full.?name|apellido|nombre/.test(s)) return "name";
+  return null;
+}
+
+/** A fill-field requirement's unit, only when ALL its classified fields agree. */
+function reqUnit(r: Requirement): "address" | "name" | null {
+  if (r.type !== "fill-field" || !r.fields.length) return null;
+  const set = new Set(r.fields.map(unitOf).filter(Boolean) as ("address" | "name")[]);
+  return set.size === 1 ? [...set][0] : null;
+}
+
+/** Difficulty = the hardest of: model-provided, the type baseline, and flag severity. */
+function scoreDifficulty(r: Requirement): Difficulty {
+  const typeBase: Difficulty = r.type === "fill-field" ? "easy" : "medium";
+  const hasHeavy = r.flags.some((f) => f.kind === "legal-risk" || f.kind === "background-check");
+  const hasMed = r.flags.some((f) => f.kind === "fee" || f.kind === "deadline");
+  const flagBase: Difficulty = hasHeavy ? "hard" : hasMed ? "medium" : "easy";
+  return maxDiff(r.difficulty, typeBase, flagBase);
+}
+
+/** Tour phase: prerequisites (0) → on-page fills (1) → commit/pay (2). */
+function phaseOf(t: RequirementType): number {
+  if (t === "gather-document" || t === "external-action") return 0;
+  if (t === "fill-field") return 1;
+  return 2; // sign, pay-fee
+}
+
+/**
+ * (a) Merge consecutive same-unit fill-field requirements (an address or name
+ *     split across separate requirements) into ONE, with ONE re-derived spotlight
+ *     — a safety net for when the model fails to group. (b) Re-score difficulty.
+ *     (c) Order the tour: prerequisites first, then fills easy→hard / top→bottom,
+ *     then pay-fee, with sign always last. Reassign `order` to the final index.
+ */
+export function groupAndOrder(reqs: Requirement[]): Requirement[] {
+  // (a) merge
+  const merged: Requirement[] = [];
+  for (const r of reqs) {
+    const prev = merged[merged.length - 1];
+    const u = reqUnit(r);
+    if (
+      prev &&
+      u &&
+      reqUnit(prev) === u &&
+      prev.fields.length > 0 &&
+      r.fields.length > 0 &&
+      prev.fields[0].rect.page === r.fields[0].rect.page
+    ) {
+      const fields = [...prev.fields, ...r.fields];
+      merged[merged.length - 1] = { ...prev, fields, spotlight: bboxOf(fields), flags: [...prev.flags, ...r.flags] };
+    } else {
+      merged.push(r);
+    }
+  }
+
+  // (b) difficulty
+  const scored = merged.map((r) => ({ ...r, difficulty: scoreDifficulty(r) }));
+
+  // (c) order
+  const posOf = (r: Requirement): number => {
+    const rc = r.spotlight ?? r.fields[0]?.rect ?? null;
+    return rc ? rc.page * 10 + rc.y : 0;
+  };
+  const ordered = [...scored].sort((a, b) => {
+    const pa = phaseOf(a.type);
+    const pb = phaseOf(b.type);
+    if (pa !== pb) return pa - pb;
+    // sign always last within its phase
+    const sa = a.type === "sign" ? 1 : 0;
+    const sb = b.type === "sign" ? 1 : 0;
+    if (sa !== sb) return sa - sb;
+    const da = DIFF_RANK[a.difficulty];
+    const db = DIFF_RANK[b.difficulty];
+    if (da !== db) return da - db;
+    const ya = posOf(a);
+    const yb = posOf(b);
+    if (ya !== yb) return ya - yb;
+    return a.order - b.order; // stable final tie-break
+  });
+
+  return ordered.map((r, i) => ({ ...r, order: i + 1 }));
+}
+
 /**
  * The trust boundary. Turn ANY value (a model reply, partial JSON, or the mock)
  * into a valid DocumentModel that the rest of the app can render without guards.
@@ -185,13 +277,14 @@ export function normalizeDoc(raw: unknown): DocumentModel {
   const o = asObj(raw);
   const seenReq = new Set<string>();
   const seenField = new Set<string>();
+  const requirements = asArr(o.requirements).map((r, i) => requirement(r, i, seenReq, seenField));
   return {
     id: str(o.id) || "doc",
     fileName: str(o.fileName) || "document",
     docType: bilingual(o.docType),
     summary: bilingual(o.summary),
     pages: asArr(o.pages).map(docPage),
-    requirements: asArr(o.requirements).map((r, i) => requirement(r, i, seenReq, seenField)),
+    requirements: groupAndOrder(requirements),
     topFlags: asArr(o.topFlags).map(flag),
   };
 }
