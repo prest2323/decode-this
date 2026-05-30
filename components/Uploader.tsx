@@ -1,11 +1,16 @@
 "use client";
-// Uploader — template owner Sawyer. Drag/drop or pick a PDF/image -> POST
-// /api/analyze -> loadDoc(result). Also a one-click "Try the SBA sample" that
-// loads the mock instantly (network-proof hero on stage). Sawyer makes it pretty.
+// Uploader — owned by Sawyer (transferred to Michael for the PDF-render job).
+// PDF-only: pick/drop a PDF -> stash its bytes for the canvas (pdfjs renders the
+// real page) -> POST /api/analyze -> loadDoc(result). Also a one-click "Try the
+// SBA sample" that loads the mock instantly (network-proof hero on stage).
 import { useCallback, useRef, useState } from "react";
 import { useDoc } from "@/lib/store";
 import { MOCK_DOC } from "@/lib/mock";
+import { setUploadedFile, clearUploadedFile } from "@/components/uploadedDoc";
 import type { ApiResponse, DocumentModel } from "@/lib/types";
+
+const isPdf = (f: File): boolean =>
+  f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
 
 export default function Uploader() {
   const { loadDoc } = useDoc();
@@ -16,6 +21,10 @@ export default function Uploader() {
 
   const analyze = useCallback(
     async (file: File) => {
+      if (!isPdf(file)) {
+        setError("Please upload a PDF — that's the format we can read and walk you through. (Or try the sample below.)");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -25,10 +34,12 @@ export default function Uploader() {
           r.onerror = () => reject(new Error("read failed"));
           r.readAsDataURL(file);
         });
+        // Keep the bytes so the canvas can render the REAL PDF page (pdfjs).
+        setUploadedFile(dataUrl, "application/pdf");
         const resp = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, file: dataUrl, mime: file.type }),
+          body: JSON.stringify({ fileName: file.name, file: dataUrl, mime: "application/pdf" }),
         });
         const json = (await resp.json()) as ApiResponse<DocumentModel>;
         if (json.ok) loadDoc(json.result);
@@ -63,15 +74,15 @@ export default function Uploader() {
       >
         <div className="text-4xl">📄</div>
         <p className="mt-3 text-lg font-semibold text-slate-800">
-          {loading ? "Reading your document…" : "Drop a complex document here"}
+          {loading ? "Reading your document…" : "Drop a PDF here"}
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          PDF or image. We&apos;ll break it down and walk you through every step.
+          We&apos;ll read the real form, break it down, and walk you through every step.
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,image/*"
+          accept="application/pdf"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -84,7 +95,10 @@ export default function Uploader() {
 
       <button
         type="button"
-        onClick={() => loadDoc(MOCK_DOC)}
+        onClick={() => {
+          clearUploadedFile();
+          loadDoc(MOCK_DOC);
+        }}
         disabled={loading}
         className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
       >
