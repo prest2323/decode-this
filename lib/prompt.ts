@@ -49,7 +49,12 @@ FEW-SHOT (illustrative — follow the SHAPE; never copy these facts unless the d
 2) The form states "All owners of 20% or more must consent to a background check and personally guarantee the loan."
    → ONE requirement: type "external-action", difficulty "hard",
      title {en:"Declare ownership (each owner of 20%+)", es:"Declare la propiedad (cada dueño con 20%+)"},
-     flags: [{kind:"background-check", label:{en:"Owners 20%+ are background-checked", es:"Dueños con 20%+ pasan verificación de antecedentes"}}, {kind:"legal-risk", label:{en:"Triggers a personal guarantee", es:"Activa una garantía personal"}}]`;
+     flags: [{kind:"background-check", label:{en:"Owners 20%+ are background-checked", es:"Dueños con 20%+ pasan verificación de antecedentes"}}, {kind:"legal-risk", label:{en:"Triggers a personal guarantee", es:"Activa una garantía personal"}}]
+
+OTHER DOC CLASSES (same spine; the typical RequirementType mix to look for):
+- Lease / rental agreement: a fill-field (tenant name + rent), a pay-fee (security deposit), a gather-document (proof of income), and a sign step — flag the binding term (legal-risk) and the sign-by date (deadline).
+- Benefits renewal (CalFresh, Medi-Cal): gather-document prerequisites (pay stubs, proof of residence) BEFORE the on-page fields, a fill-field (household + income), often an external-action (phone interview), and a HARD renewal deadline.
+- Immigration form (USCIS, e.g. N-400): a fill-field (legal name + A-Number), a gather-document (green card / travel records), a pay-fee (filing fee), an external-action (biometrics → background-check), and a sign step under penalty of perjury (legal-risk).`;
 
 export const CHAT_SYSTEM = `You are Decode This, helping someone fill out a specific document. Answer ONLY from
 the document context provided plus general, accurate, non-legal guidance. Be calm, concrete, and

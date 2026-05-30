@@ -297,3 +297,206 @@ export const MOCK_DOC: DocumentModel = {
 // document by this name; `MOCK_DOC` stays as the generic fallback the API (Preston)
 // already imports, so both names resolve to the one coherent SBA model.
 export const MOCK_SBA: DocumentModel = MOCK_DOC;
+
+// ==========================================================================
+//  EXTRA DOC CLASSES — small fixtures proving the spine generalizes beyond
+//  the SBA hero. Each surfaces a different RequirementType mix + topFlags so
+//  the UI can be tested against other documents. Kept compact on purpose.
+// ==========================================================================
+
+// Bounding box (padded) of a set of field rects = a grouped fill-field spotlight.
+function boxOf(rects: Rect[]): Rect {
+  const page = rects[0].page;
+  const minX = Math.min(...rects.map((r) => r.x));
+  const minY = Math.min(...rects.map((r) => r.y));
+  const maxX = Math.max(...rects.map((r) => r.x + r.w));
+  const maxY = Math.max(...rects.map((r) => r.y + r.h));
+  const pad = 0.012;
+  return { page, x: Math.max(0, minX - pad), y: Math.max(0, minY - pad), w: Math.min(1, maxX - minX + pad * 2), h: Math.min(1, maxY - minY + pad * 2) };
+}
+
+// A simple one-page placeholder (title + subtitle) so the canvas has something to draw.
+function plainPage(title: string, subtitle: string) {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}" viewBox="0 0 ${PW} ${PH}">` +
+    `<rect width="${PW}" height="${PH}" fill="#f8fafc"/>` +
+    `<rect x="18" y="18" width="${PW - 36}" height="${PH - 36}" fill="#ffffff" stroke="#e2e8f0"/>` +
+    `<text x="40" y="60" font-size="22" font-weight="700" fill="#0f172a" font-family="Arial, sans-serif">${esc(title)}</text>` +
+    `<text x="40" y="88" font-size="13" fill="#64748b" font-family="Arial, sans-serif">${esc(subtitle)}</text>` +
+    `</svg>`;
+  return { index: 0, image: "data:image/svg+xml," + encodeURIComponent(svg), width: PW, height: PH };
+}
+
+// ---- Residential lease — deadlines, fees, a binding signature ----
+const leaseNameRect: Rect = { page: 0, x: 0.06, y: 0.2, w: 0.5, h: 0.03 };
+const leaseRentRect: Rect = { page: 0, x: 0.06, y: 0.27, w: 0.3, h: 0.03 };
+export const MOCK_LEASE: DocumentModel = {
+  id: "mock_lease",
+  fileName: "Residential-Lease.pdf",
+  docType: { en: "Residential lease agreement", es: "Contrato de arrendamiento de vivienda" },
+  summary: {
+    en: "This is a 12-month lease for a place to live. It asks for your name and the rent, a refundable security deposit, and your signature — which legally binds you to the full term. Read the deposit and end-of-lease rules before you sign.",
+    es: "Este es un contrato de arrendamiento de 12 meses para una vivienda. Pide su nombre y la renta, un depósito de garantía reembolsable, y su firma, que lo compromete legalmente por todo el plazo. Lea las reglas del depósito y del fin del contrato antes de firmar.",
+  },
+  pages: [plainPage("Residential Lease Agreement", "12-month term · sign to accept")],
+  requirements: [
+    {
+      id: "r_lease_party", order: 1, type: "fill-field", difficulty: "easy", status: "todo",
+      title: { en: "Enter your name and the monthly rent", es: "Ingrese su nombre y la renta mensual" },
+      guidance: { en: "Write your full legal name as the tenant and the monthly rent exactly as the lease states it.", es: "Escriba su nombre legal completo como inquilino y la renta mensual tal como aparece en el contrato." },
+      flags: [],
+      fields: [
+        { id: "f_lease_name", name: "tenant_name", kind: "text", label: { en: "Tenant full name", es: "Nombre completo del inquilino" }, rect: leaseNameRect, value: null, required: true },
+        { id: "f_lease_rent", name: "monthly_rent", kind: "number", label: { en: "Monthly rent", es: "Renta mensual" }, rect: leaseRentRect, value: null, required: true, placeholder: "$1,800" },
+      ],
+      spotlight: boxOf([leaseNameRect, leaseRentRect]),
+    },
+    {
+      id: "r_lease_deposit", order: 2, type: "pay-fee", difficulty: "medium", status: "todo",
+      title: { en: "Pay the security deposit", es: "Pague el depósito de garantía" },
+      guidance: { en: "A refundable deposit is due before move-in. You should get it back when you leave if there's no damage — ask for the deposit terms in writing.", es: "Se debe pagar un depósito reembolsable antes de mudarse. Debería recuperarlo al irse si no hay daños — pida las condiciones del depósito por escrito." },
+      flags: [{ kind: "fee", label: { en: "$1,800 refundable deposit", es: "$1,800 de depósito reembolsable" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_lease_income", order: 3, type: "gather-document", difficulty: "medium", status: "todo",
+      title: { en: "Bring proof of income", es: "Traiga comprobante de ingresos" },
+      guidance: { en: "Most landlords want recent pay stubs or a bank statement showing you can cover the rent. Have them ready as PDFs.", es: "La mayoría de los propietarios piden talones de pago recientes o un estado de cuenta que muestre que puede pagar la renta. Téngalos listos en PDF." },
+      flags: [{ kind: "tip", label: { en: "Usually the last 2-3 pay stubs", es: "Normalmente los últimos 2-3 talones de pago" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_lease_sign", order: 4, type: "sign", difficulty: "medium", status: "todo",
+      title: { en: "Sign the lease", es: "Firme el contrato" },
+      guidance: { en: "Your signature locks you into the full 12 months — you owe rent for the whole term even if you move out early. Don't sign until the rent, dates, and deposit rules are correct.", es: "Su firma lo compromete por los 12 meses completos — debe la renta por todo el plazo aunque se mude antes. No firme hasta que la renta, las fechas y las reglas del depósito sean correctas." },
+      flags: [
+        { kind: "legal-risk", label: { en: "Binds you for the full 12 months", es: "Lo compromete por los 12 meses completos" } },
+        { kind: "deadline", label: { en: "Sign by Jun 15, 2026", es: "Firme antes del 15 de jun, 2026" }, date: "2026-06-15" },
+      ],
+      fields: [], spotlight: null,
+    },
+  ],
+  topFlags: [
+    { kind: "deadline", label: { en: "Sign by Jun 15, 2026", es: "Firme antes del 15 de jun, 2026" }, date: "2026-06-15" },
+    { kind: "fee", label: { en: "$1,800 deposit due at signing", es: "$1,800 de depósito al firmar" } },
+    { kind: "legal-risk", label: { en: "12-month commitment", es: "Compromiso de 12 meses" } },
+  ],
+};
+
+// ---- CalFresh (food benefits) renewal — gather prerequisites + a hard deadline ----
+const benefitsSizeRect: Rect = { page: 0, x: 0.06, y: 0.22, w: 0.18, h: 0.03 };
+const benefitsIncomeRect: Rect = { page: 0, x: 0.3, y: 0.22, w: 0.28, h: 0.03 };
+export const MOCK_BENEFITS: DocumentModel = {
+  id: "mock_benefits",
+  fileName: "CalFresh-Renewal.pdf",
+  docType: { en: "CalFresh (food benefits) renewal", es: "Renovación de CalFresh (beneficios de alimentos)" },
+  summary: {
+    en: "This form renews your monthly food benefits. You must report your household size and income, send proof, and finish a quick phone interview. If you miss the deadline your benefits stop, so don't wait.",
+    es: "Este formulario renueva sus beneficios mensuales de alimentos. Debe informar el tamaño de su hogar y sus ingresos, enviar comprobantes y completar una breve entrevista telefónica. Si pierde la fecha límite, sus beneficios se detienen, así que no espere.",
+  },
+  pages: [plainPage("CalFresh Renewal", "Report income · interview required")],
+  requirements: [
+    {
+      id: "r_ben_stubs", order: 1, type: "gather-document", difficulty: "medium", status: "todo",
+      title: { en: "Gather your last 30 days of pay stubs", es: "Reúna sus talones de pago de los últimos 30 días" },
+      guidance: { en: "You'll need proof of everything the household earned in the last month. If you're paid in cash, a signed note from your employer can work — ask your worker.", es: "Necesitará comprobante de todo lo que ganó el hogar el último mes. Si le pagan en efectivo, una nota firmada de su empleador puede servir — pregunte a su trabajador social." },
+      flags: [{ kind: "tip", label: { en: "Cash income still counts — report it", es: "El ingreso en efectivo también cuenta — repórtelo" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_ben_residence", order: 2, type: "gather-document", difficulty: "easy", status: "todo",
+      title: { en: "Bring proof of where you live", es: "Traiga comprobante de dónde vive" },
+      guidance: { en: "A utility bill, lease, or piece of mail with your address is usually enough.", es: "Una factura de servicios, un contrato de arrendamiento o una carta con su dirección suele ser suficiente." },
+      flags: [], fields: [], spotlight: null,
+    },
+    {
+      id: "r_ben_household", order: 3, type: "fill-field", difficulty: "medium", status: "todo",
+      title: { en: "Report your household size and income", es: "Informe el tamaño de su hogar y sus ingresos" },
+      guidance: { en: "Count everyone who buys and cooks food together. Put the total monthly income before taxes — be exact, it sets your benefit amount.", es: "Cuente a todos los que compran y cocinan los alimentos juntos. Ponga el ingreso mensual total antes de impuestos — sea exacto, eso determina el monto de su beneficio." },
+      flags: [],
+      fields: [
+        { id: "f_ben_size", name: "household_size", kind: "number", label: { en: "People in household", es: "Personas en el hogar" }, rect: benefitsSizeRect, value: null, required: true },
+        { id: "f_ben_income", name: "monthly_income", kind: "number", label: { en: "Monthly income (before taxes)", es: "Ingreso mensual (antes de impuestos)" }, rect: benefitsIncomeRect, value: null, required: true },
+      ],
+      spotlight: boxOf([benefitsSizeRect, benefitsIncomeRect]),
+    },
+    {
+      id: "r_ben_interview", order: 4, type: "external-action", difficulty: "hard", status: "todo",
+      title: { en: "Complete your phone interview", es: "Complete su entrevista telefónica" },
+      guidance: { en: "The county will call you to confirm your answers. Watch for the call and answer unknown numbers around your appointment window — missing it can delay or stop your benefits.", es: "El condado lo llamará para confirmar sus respuestas. Esté pendiente de la llamada y conteste números desconocidos cerca de su cita — perderla puede retrasar o detener sus beneficios." },
+      flags: [{ kind: "tip", label: { en: "They call you — keep your phone close", es: "Ellos lo llaman — tenga su teléfono cerca" } }],
+      fields: [], spotlight: null,
+    },
+  ],
+  topFlags: [
+    { kind: "deadline", label: { en: "Renew by Jun 20, 2026 or benefits stop", es: "Renueve antes del 20 de jun, 2026 o se detienen los beneficios" }, date: "2026-06-20" },
+    { kind: "tip", label: { en: "A phone interview is required", es: "Se requiere una entrevista telefónica" } },
+  ],
+};
+
+// ---- USCIS N-400 (citizenship) — external background actions + fee + perjury signature ----
+const uscisNameRect: Rect = { page: 0, x: 0.06, y: 0.2, w: 0.5, h: 0.03 };
+const uscisANumRect: Rect = { page: 0, x: 0.06, y: 0.27, w: 0.28, h: 0.03 };
+export const MOCK_USCIS: DocumentModel = {
+  id: "mock_uscis",
+  fileName: "USCIS-N-400.pdf",
+  docType: { en: "USCIS Form N-400 (citizenship application)", es: "Formulario N-400 de USCIS (solicitud de ciudadanía)" },
+  summary: {
+    en: "This is the application to become a U.S. citizen. It asks for your legal name and A-Number, a filing fee, a fingerprint (biometrics) appointment, and your signature under penalty of perjury. Everything you write must be true and match your records.",
+    es: "Esta es la solicitud para hacerse ciudadano de los EE. UU. Pide su nombre legal y su número A, una tarifa de presentación, una cita de huellas (biométricos) y su firma bajo pena de perjurio. Todo lo que escriba debe ser verdadero y coincidir con sus registros.",
+  },
+  pages: [plainPage("USCIS Form N-400", "Application for Naturalization")],
+  requirements: [
+    {
+      id: "r_uscis_docs", order: 1, type: "gather-document", difficulty: "medium", status: "todo",
+      title: { en: "Gather your green card and travel records", es: "Reúna su tarjeta verde y registros de viajes" },
+      guidance: { en: "Have your permanent resident card and a list of every trip outside the U.S. (dates and length). Accuracy here matters for eligibility.", es: "Tenga su tarjeta de residente permanente y una lista de cada viaje fuera de los EE. UU. (fechas y duración). La exactitud aquí importa para la elegibilidad." },
+      flags: [], fields: [], spotlight: null,
+    },
+    {
+      id: "r_uscis_identity", order: 2, type: "fill-field", difficulty: "medium", status: "todo",
+      title: { en: "Enter your legal name and A-Number", es: "Ingrese su nombre legal y número A" },
+      guidance: { en: "Write your name exactly as it appears on your green card, and your 9-digit A-Number (starts with 'A'). They must match your records.", es: "Escriba su nombre exactamente como aparece en su tarjeta verde, y su número A de 9 dígitos (empieza con 'A'). Deben coincidir con sus registros." },
+      flags: [],
+      fields: [
+        { id: "f_uscis_name", name: "applicant_name", kind: "text", label: { en: "Full legal name", es: "Nombre legal completo" }, rect: uscisNameRect, value: null, required: true },
+        { id: "f_uscis_anum", name: "a_number", kind: "text", label: { en: "A-Number", es: "Número A" }, rect: uscisANumRect, value: null, required: true, placeholder: "A123456789" },
+      ],
+      spotlight: boxOf([uscisNameRect, uscisANumRect]),
+    },
+    {
+      id: "r_uscis_fee", order: 3, type: "pay-fee", difficulty: "hard", status: "todo",
+      title: { en: "Pay the filing fee", es: "Pague la tarifa de presentación" },
+      guidance: { en: "There's a filing fee for N-400. A fee waiver may be available if your income is low — ask before you pay, and never send cash by mail.", es: "Hay una tarifa de presentación para el N-400. Puede haber una exención de tarifa si su ingreso es bajo — pregunte antes de pagar, y nunca envíe efectivo por correo." },
+      flags: [{ kind: "fee", label: { en: "$760 filing fee (waiver may apply)", es: "$760 de tarifa (puede aplicar exención)" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_uscis_bio", order: 4, type: "external-action", difficulty: "hard", status: "todo",
+      title: { en: "Attend your biometrics appointment", es: "Asista a su cita de biométricos" },
+      guidance: { en: "USCIS will mail you a date to take your fingerprints and photo for a background check. Bring the notice and a photo ID, and don't miss it.", es: "USCIS le enviará por correo una fecha para tomar sus huellas y foto para una verificación de antecedentes. Lleve el aviso y una identificación con foto, y no falte." },
+      flags: [{ kind: "background-check", label: { en: "Fingerprints + background check", es: "Huellas + verificación de antecedentes" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_uscis_sign", order: 5, type: "sign", difficulty: "medium", status: "todo",
+      title: { en: "Sign under penalty of perjury", es: "Firme bajo pena de perjurio" },
+      guidance: { en: "Your signature swears everything in the form is true. A false answer can cost you your application or your status — review it carefully before signing.", es: "Su firma jura que todo en el formulario es verdadero. Una respuesta falsa puede costarle su solicitud o su estatus — revíselo con cuidado antes de firmar." },
+      flags: [{ kind: "legal-risk", label: { en: "Signed under penalty of perjury", es: "Firmado bajo pena de perjurio" } }],
+      fields: [], spotlight: null,
+    },
+  ],
+  topFlags: [
+    { kind: "fee", label: { en: "$760 filing fee", es: "$760 de tarifa de presentación" } },
+    { kind: "background-check", label: { en: "Biometrics + background check", es: "Biométricos + verificación de antecedentes" } },
+    { kind: "legal-risk", label: { en: "Signed under penalty of perjury", es: "Firmado bajo pena de perjurio" } },
+  ],
+};
+
+// Convenience map so the UI and the eval can iterate every doc class.
+export const MOCK_VARIANTS: Record<string, DocumentModel> = {
+  sba: MOCK_SBA,
+  lease: MOCK_LEASE,
+  benefits: MOCK_BENEFITS,
+  uscis: MOCK_USCIS,
+};
