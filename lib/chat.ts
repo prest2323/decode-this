@@ -8,6 +8,15 @@ import type { ChatRequest, ChatResult, Lang } from "@/lib/types";
 import { provider, geminiClient, anthropicClient, GEMINI_MODEL, ANTHROPIC_MODEL } from "@/lib/ai";
 import { CHAT_SYSTEM } from "@/lib/prompt";
 
+// The primary model (GEMINI_MODEL, e.g. gemini-3.5-flash) can have a tight
+// free-tier daily quota. On a 429 / availability error we transparently retry on
+// a higher-quota model (still LIVE) before resorting to the canned offline mock,
+// so the chat stays grounded in the real model whenever any model has quota.
+// Override with GEMINI_FALLBACK_MODEL; set it to "" to disable the fallback.
+const GEMINI_FALLBACK_MODEL =
+  process.env.GEMINI_FALLBACK_MODEL ?? (GEMINI_MODEL === "gemini-2.5-flash" ? "" : "gemini-2.5-flash");
+const GEMINI_MODELS = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter((m, i, a) => m && a.indexOf(m) === i);
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Reject if `p` hasn't settled within `ms` (late settlement is swallowed). */
@@ -113,15 +122,32 @@ function askLang(lang: Lang): string {
   return lang === "es" ? "Spanish" : "English";
 }
 
-async function chatWithGemini(req: ChatRequest): Promise<string> {
+async function geminiChatOnce(req: ChatRequest, model: string): Promise<string> {
   const res = await geminiClient().models.generateContent({
-    model: GEMINI_MODEL,
+    model,
     contents: [
       { role: "user", parts: [{ text: `${buildContext(req)}\n\nQuestion (answer in ${askLang(req.lang)}): ${req.question}` }] },
     ],
     config: { systemInstruction: CHAT_SYSTEM, temperature: 0.3 },
   });
   return res.text ?? "";
+}
+
+/** Try the primary model, then any fallback model (e.g. on a 429), staying LIVE
+ *  as long as some model has quota. Throws only if every model fails. */
+async function chatWithGemini(req: ChatRequest): Promise<string> {
+  let lastErr: unknown;
+  for (const model of GEMINI_MODELS) {
+    try {
+      const text = (await geminiChatOnce(req, model)).trim();
+      if (text) return text;
+    } catch (e) {
+      lastErr = e;
+      if (GEMINI_MODELS.length > 1) console.error(`chat: model ${model} failed, trying fallback`);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return "";
 }
 
 async function chatWithAnthropic(req: ChatRequest): Promise<string> {

@@ -576,13 +576,21 @@ function toJsonSchema(node: unknown): unknown {
   return node;
 }
 
-async function extractWithGemini(parsed: ParsedFile, systemText: string): Promise<unknown> {
+// Primary model (GEMINI_MODEL, e.g. gemini-3.5-flash) can have a tight free-tier
+// daily quota; on a 429/availability error we transparently retry on a higher-
+// quota model (still LIVE) before the catch-block mock fallback. Disable with
+// GEMINI_FALLBACK_MODEL="".
+const GEMINI_FALLBACK_MODEL =
+  process.env.GEMINI_FALLBACK_MODEL ?? (GEMINI_MODEL === "gemini-2.5-flash" ? "" : "gemini-2.5-flash");
+const GEMINI_MODELS = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter((m, i, a) => m && a.indexOf(m) === i);
+
+async function geminiExtractOnce(parsed: ParsedFile, systemText: string, model: string): Promise<unknown> {
   const { mimeType, data, isText } = parsed;
   const parts = isText
     ? [{ text: systemText }, { text: data }]
     : [{ text: systemText }, { inlineData: { mimeType, data } }];
   const res = await geminiClient().models.generateContent({
-    model: GEMINI_MODEL,
+    model,
     contents: [{ role: "user", parts }],
     config: {
       responseMimeType: "application/json",
@@ -592,6 +600,21 @@ async function extractWithGemini(parsed: ParsedFile, systemText: string): Promis
     },
   });
   return JSON.parse(res.text ?? "{}");
+}
+
+/** Try the primary model, then any fallback model (e.g. on a 429), staying LIVE
+ *  as long as some Gemini model has quota. Throws only if every model fails. */
+async function extractWithGemini(parsed: ParsedFile, systemText: string): Promise<unknown> {
+  let lastErr: unknown;
+  for (const model of GEMINI_MODELS) {
+    try {
+      return await geminiExtractOnce(parsed, systemText, model);
+    } catch (e) {
+      lastErr = e;
+      if (GEMINI_MODELS.length > 1) console.error(`extract: model ${model} failed, trying fallback`);
+    }
+  }
+  throw lastErr ?? new Error("gemini extract: all models failed");
 }
 
 async function extractWithAnthropic(parsed: ParsedFile, systemText: string): Promise<unknown> {
