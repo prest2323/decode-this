@@ -6,10 +6,9 @@
 // buildExport() is split out, window-free, and synchronous-import-clean (no @/ value
 // imports) so it can be unit-tested directly. exportDoc() wraps it with the download.
 //
-// NOTE: this generates a clean filled PDF from the model. Filling the *original*
-// uploaded AcroForm (pdf-lib getForm().getTextField().setText() + flatten) would need
-// the original PDF bytes threaded through DocumentModel — not in the contract today
-// (flagged for Preston). The generated PDF makes "Export → PDF" real without them.
+// NOTE: when the model carries the original uploaded PDF (doc.sourceFile, a data
+// URL), "Export -> PDF" fills that real AcroForm (setText/check + flatten). When
+// there's no source PDF (e.g. the SVG mock) it falls back to a clean generated PDF.
 import type { DocumentModel, ExportFormat, Field, Lang } from "@/lib/types";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
@@ -96,6 +95,41 @@ async function pdfBytes(doc: DocumentModel, lang: Lang): Promise<Uint8Array> {
   return pdf.save();
 }
 
+/** Fill the ORIGINAL uploaded PDF's AcroForm from the model's values, then
+ *  flatten. Returns null when there's no source PDF or no fillable form, so the
+ *  caller falls back to the generated PDF. */
+async function fillOriginalPdf(doc: DocumentModel): Promise<Uint8Array | null> {
+  const src = doc.sourceFile;
+  if (!src || !src.startsWith("data:application/pdf")) return null;
+  try {
+    const b64 = src.replace(/^data:.*?;base64,/, "");
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const pdf = await PDFDocument.load(bytes);
+    const form = pdf.getForm();
+    if (form.getFields().length === 0) return null;
+    for (const r of doc.requirements) {
+      for (const fld of r.fields) {
+        try {
+          if (fld.kind === "checkbox") {
+            const cb = form.getCheckBox(fld.name);
+            if (fld.value === true) cb.check();
+            else cb.uncheck();
+          } else {
+            form.getTextField(fld.name).setText(valueStr(fld.value));
+          }
+        } catch {
+          // field name isn't in this PDF's AcroForm — skip it
+        }
+      }
+    }
+    form.flatten();
+    return await pdf.save();
+  } catch (e) {
+    console.error("fill-original failed, using generated PDF:", e);
+    return null;
+  }
+}
+
 export interface ExportArtifact {
   filename: string;
   mime: string;
@@ -114,8 +148,11 @@ export async function buildExport(
       return { filename: `${base}.json`, mime: "application/json", data: jsonContent(doc) };
     case "csv":
       return { filename: `${base}.csv`, mime: "text/csv", data: csvContent(doc, lang) };
-    case "pdf":
-      return { filename: `${base}-filled.pdf`, mime: "application/pdf", data: await pdfBytes(doc, lang) };
+    case "pdf": {
+      const original = await fillOriginalPdf(doc);
+      const data = original ?? (await pdfBytes(doc, lang));
+      return { filename: `${base}-filled.pdf`, mime: "application/pdf", data };
+    }
     case "docx":
       throw new Error("docx-coming-soon");
     default:

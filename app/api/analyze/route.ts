@@ -32,6 +32,10 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const result = await analyzeDocument(body);
+    // Thread the original PDF bytes through so export can fill the real form.
+    if (body.file?.startsWith("data:application/pdf")) {
+      result.sourceFile = body.file;
+    }
     return ok(result);
   } catch (e) {
     console.error("analyze failed", e);

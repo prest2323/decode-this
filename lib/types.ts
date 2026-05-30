@@ -119,6 +119,9 @@ export interface DocumentModel {
   requirements: Requirement[];
   /** Top-level risk flags for the Protect view (deadlines, fees, checks). */
   topFlags: Flag[];
+  /** The original uploaded file as a base64 data URL (PDF), when there is one.
+   *  Lets export fill the REAL AcroForm instead of generating a fresh PDF. */
+  sourceFile?: string;
 }
 
 // ---------- API ----------
