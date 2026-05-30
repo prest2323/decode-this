@@ -92,20 +92,20 @@ function svgPage(headers: { t: string; size: number; bold?: boolean }[], page: n
       const y = s.y * PH;
       const w = s.w * PW;
       const h = s.h * PH;
-      const label = `<text x="${x}" y="${y - 6}" font-size="13" fill="#475569" font-family="Arial, sans-serif">${esc(s.en)}${s.required ? " *" : ""}</text>`;
-      const rect = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" rx="3"/>`;
+      const label = `<text x="${x}" y="${y - 6}" font-size="12" fill="#64748b" font-family="system-ui, sans-serif" font-weight="500">${esc(s.en)}${s.required ? " *" : ""}</text>`;
+      const rect = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" rx="1"/>`;
       return label + rect;
     })
     .join("");
   const head = headers
     .map(
       (hd, i) =>
-        `<text x="40" y="${56 + i * 24}" font-size="${hd.size}" fill="${hd.bold ? "#0f172a" : "#64748b"}" font-family="Arial, sans-serif" font-weight="${hd.bold ? "700" : "400"}">${esc(hd.t)}</text>`,
+        `<text x="40" y="${56 + i * 24}" font-size="${hd.size}" fill="${hd.bold ? "#0f172a" : "#64748b"}" font-family="system-ui, sans-serif" font-weight="${hd.bold ? "700" : "500"}">${esc(hd.t)}</text>`,
     )
     .join("");
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}" viewBox="0 0 ${PW} ${PH}">` +
-    `<rect width="${PW}" height="${PH}" fill="#eef2f7"/>` +
+    `<rect width="${PW}" height="${PH}" fill="#f1f5f9"/>` +
     `<rect x="18" y="18" width="${PW - 36}" height="${PH - 36}" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>` +
     head +
     boxes +
