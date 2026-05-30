@@ -6,32 +6,32 @@ import { useDoc } from "@/lib/store";
 import type { FlagKind } from "@/lib/types";
 
 const FLAG: Record<FlagKind, { icon: string; cls: string }> = {
-  deadline: { icon: "⏰", cls: "bg-red-50 text-red-700 ring-red-200" },
-  fee: { icon: "💵", cls: "bg-amber-50 text-amber-800 ring-amber-200" },
-  "background-check": { icon: "🔎", cls: "bg-violet-50 text-violet-700 ring-violet-200" },
-  "legal-risk": { icon: "⚖️", cls: "bg-orange-50 text-orange-700 ring-orange-200" },
-  scam: { icon: "🚩", cls: "bg-red-50 text-red-700 ring-red-200" },
-  tip: { icon: "💡", cls: "bg-sky-50 text-sky-700 ring-sky-200" },
+  deadline: { icon: "⏰", cls: "bg-rose-50 text-rose-700 ring-rose-250/30" },
+  fee: { icon: "💵", cls: "bg-slate-100 text-slate-800 ring-slate-250/40" },
+  "background-check": { icon: "🔎", cls: "bg-indigo-50 text-indigo-700 ring-indigo-250/30" },
+  "legal-risk": { icon: "⚖️", cls: "bg-rose-50 text-rose-700 ring-rose-250/30" },
+  scam: { icon: "🚩", cls: "bg-rose-50 text-rose-700 ring-rose-250/30" },
+  tip: { icon: "💡", cls: "bg-sky-50 text-sky-750 ring-sky-250/30" },
 };
 
 export default function RiskSummary() {
   const { doc, lang } = useDoc();
   if (!doc) return null;
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+    <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5 mb-2">
         🛡️ Protect
       </div>
-      <h2 className="mt-1 text-base font-bold text-slate-900">{doc.docType[lang]}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">{doc.summary[lang]}</p>
+      <h2 className="text-sm font-bold text-slate-900 tracking-tight">{doc.docType[lang]}</h2>
+      <p className="mt-2 text-xs leading-relaxed text-slate-500 font-medium">{doc.summary[lang]}</p>
       {doc.topFlags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
           {doc.topFlags.map((f, i) => (
             <span
               key={i}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${FLAG[f.kind].cls}`}
+              className={`inline-flex items-center gap-1 rounded px-2.5 py-0.5 text-[11px] font-bold ring-1 ${FLAG[f.kind].cls}`}
             >
-              <span>{FLAG[f.kind].icon}</span>
+              <span className="text-xs shrink-0 select-none">{FLAG[f.kind].icon}</span>
               {f.label[lang]}
             </span>
           ))}

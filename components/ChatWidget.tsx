@@ -49,24 +49,28 @@ export default function ChatWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-amber-600"
+        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-md bg-slate-900 border border-slate-950 px-5 py-3 text-xs font-bold text-white shadow-lg hover:bg-slate-800 transition active:scale-95 select-none cursor-pointer"
       >
-        💬 Ask about this document
+        💬 Ask AI Assistant
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex h-[28rem] w-[22rem] max-w-[90vw] flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+    <div className="fixed bottom-5 right-5 z-50 flex h-[28rem] w-[22rem] max-w-[90vw] flex-col rounded-md border border-slate-200 bg-white shadow-2xl animate-fadeIn">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <div className="text-sm font-bold text-slate-900">💬 Ask about this document</div>
-        <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="text-xs font-black uppercase tracking-wider text-slate-800">💬 Ask Assistant</div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-slate-400 hover:text-slate-800 text-sm font-bold w-5 h-5 flex items-center justify-center rounded hover:bg-slate-50 transition cursor-pointer select-none"
+        >
           ✕
         </button>
       </div>
-      <div ref={listRef} className="flex-1 space-y-2 overflow-auto p-3">
+      <div ref={listRef} className="flex-1 space-y-2 overflow-auto p-3 bg-slate-50/30">
         {msgs.length === 0 && (
-          <p className="px-2 text-sm text-slate-400">
+          <p className="px-2 text-xs font-medium text-slate-450 leading-relaxed">
             {lang === "es"
               ? "Pregúnteme sobre cualquier paso, una tarifa, una fecha límite o qué significa un término."
               : "Ask me about any step, a fee, a deadline, or what a term means."}
@@ -75,15 +79,15 @@ export default function ChatWidget() {
         {msgs.map((m, i) => (
           <div
             key={i}
-            className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-              m.role === "user" ? "ml-auto bg-slate-900 text-white" : "bg-slate-100 text-slate-800"
+            className={`max-w-[85%] rounded px-3 py-2 text-xs font-medium leading-relaxed ${
+              m.role === "user" ? "ml-auto bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-800 border border-slate-200/50"
             }`}
           >
             {m.text}
           </div>
         ))}
         {busy && (
-          <div className="max-w-[60%] rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-400">…</div>
+          <div className="max-w-[15%] rounded bg-slate-100 border border-slate-200/50 px-3 py-1.5 text-xs text-slate-400 font-bold animate-pulse">…</div>
         )}
       </div>
       <div className="flex items-center gap-2 border-t border-slate-100 p-2">
@@ -94,13 +98,13 @@ export default function ChatWidget() {
             if (e.key === "Enter") send();
           }}
           placeholder={lang === "es" ? "Escriba su pregunta…" : "Type your question…"}
-          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-400"
+          className="flex-1 rounded border border-slate-200 px-3 py-2 text-xs font-medium outline-none focus:border-slate-900 placeholder:text-slate-400"
         />
         <button
           type="button"
           onClick={send}
           disabled={busy}
-          className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded bg-slate-900 border border-slate-950 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 select-none cursor-pointer"
         >
           Send
         </button>

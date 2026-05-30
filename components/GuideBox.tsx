@@ -42,7 +42,7 @@ export default function GuideBox() {
         type="button"
         onClick={() => setMinimized(false)}
         style={place(active.spotlight)}
-        className="pointer-events-auto absolute z-40 rounded border border-slate-900 bg-slate-900 px-3 py-1 text-[11px] font-bold text-white shadow hover:bg-slate-800 active:scale-95 transition-all select-none cursor-pointer"
+        className="pointer-events-auto absolute z-40 rounded border border-slate-900 bg-slate-900 px-3 py-1 text-[11px] font-bold text-white shadow hover:bg-slate-800 active:scale-95 transition-all duration-300 ease-in-out select-none cursor-pointer"
         title="Click to expand guidelines"
       >
         ℹ️ Guidelines (Step {active.order})
@@ -53,7 +53,7 @@ export default function GuideBox() {
   return (
     <div
       style={place(active.spotlight)}
-      className="pointer-events-auto absolute z-40 w-[86%] max-w-sm rounded border border-slate-250 bg-white p-4 shadow-lg text-left select-text animate-fadeIn"
+      className="pointer-events-auto absolute z-40 w-[86%] max-w-sm rounded border border-slate-250 bg-white p-4 shadow-lg text-left select-text animate-fadeIn transition-all duration-300 ease-in-out"
     >
       {/* Top Header Row with step tag & collapse button */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-2">
