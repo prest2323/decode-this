@@ -80,13 +80,13 @@ export default function DocCanvas() {
   // 4. Calm empty state
   if (!doc) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-white/30 backdrop-blur-md border border-white/60 rounded-[2.2rem] m-4 shadow-lg">
-        <div className="w-16 h-16 mb-4 flex items-center justify-center rounded-2xl bg-white/70 border border-white/50 text-sky-650 text-2xl shadow-sm animate-float-breath select-none">
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-white border border-slate-200 rounded-lg m-4 shadow-sm">
+        <div className="w-12 h-12 mb-4 flex items-center justify-center rounded bg-slate-50 border border-slate-200 text-slate-500 text-lg shadow-sm font-bold select-none">
           📄
         </div>
-        <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none">Drop a document to begin</h3>
-        <p className="mt-2 text-sm font-medium text-slate-500 max-w-xs leading-relaxed">
-          Once you upload your document, we will build a visual roadmap and walk you through every required field step-by-step.
+        <h3 className="text-sm font-bold text-slate-900 tracking-tight leading-none">No document loaded</h3>
+        <p className="mt-1.5 text-xs font-medium text-slate-500 max-w-xs leading-relaxed">
+          Upload a form or PDF document above, and we will automatically map all requirements and active field overlays.
         </p>
       </div>
     );
@@ -94,44 +94,44 @@ export default function DocCanvas() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* 5. Floating Glassmorphic Canvas Controls Toolbar (iOS 26 layout) */}
-      <div className="flex items-center justify-center py-4 z-20">
-        <div className="flex items-center gap-3 bg-white/45 backdrop-filter backdrop-blur-xl border border-white/50 px-6 py-2.5 rounded-full shadow-[0_12px_40px_-5px_rgba(0,0,0,0.04)] hover:bg-white/65 hover:shadow-[0_15px_45px_rgba(0,0,0,0.06)] transition-all duration-500">
+      {/* 5. Flat Canvas Controls Toolbar */}
+      <div className="flex items-center justify-center py-3 z-20 border-b border-slate-100">
+        <div className="flex items-center gap-2.5 bg-white border border-slate-200 px-4 py-1 rounded-md shadow-sm">
           <button
             type="button"
             onClick={() => setScale((s) => Math.max(0.6, s - 0.1))}
-            className="w-8 h-8 rounded-full border border-white/60 bg-white/80 flex items-center justify-center text-slate-700 hover:text-brand hover:border-brand/40 active:bg-slate-100/50 shadow-sm hover:scale-105 active:scale-95 transition-all font-bold select-none cursor-pointer"
+            className="w-7 h-7 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 transition-all font-bold shadow-sm select-none cursor-pointer text-sm"
             title="Zoom Out"
           >
             −
           </button>
-          <span className="text-xs font-black text-slate-700 min-w-[45px] text-center select-none font-mono tracking-tight">
+          <span className="text-[11px] font-bold text-slate-600 min-w-[40px] text-center select-none font-mono">
             {Math.round(scale * 100)}%
           </span>
           <button
             type="button"
             onClick={() => setScale((s) => Math.min(1.8, s + 0.1))}
-            className="w-8 h-8 rounded-full border border-white/60 bg-white/80 flex items-center justify-center text-slate-700 hover:text-brand hover:border-brand/40 active:bg-slate-100/50 shadow-sm hover:scale-105 active:scale-95 transition-all font-bold select-none cursor-pointer"
+            className="w-7 h-7 rounded border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 transition-all font-bold shadow-sm select-none cursor-pointer text-sm"
             title="Zoom In"
           >
             +
           </button>
           
           {/* Subtle vertical divider */}
-          <div className="w-[1px] h-4 bg-slate-300/30 mx-1" />
+          <div className="w-[1px] h-3 bg-slate-200 mx-1" />
 
           <button
             type="button"
             onClick={() => setScale(1.0)}
-            className="rounded-full border border-white/60 bg-white/80 px-4 py-1 text-xs font-extrabold text-slate-750 hover:text-brand hover:border-brand/40 hover:scale-105 active:scale-95 shadow-sm transition-all select-none cursor-pointer"
+            className="rounded border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:border-slate-350 active:bg-slate-50 shadow-sm transition-all select-none cursor-pointer"
           >
             Reset
           </button>
         </div>
       </div>
 
-      {/* 6. Document Scroll & Render View (Glass container) */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 bg-white/10 backdrop-blur-sm rounded-[2rem] border border-white/30 shadow-inner">
+      {/* 6. Document Scroll & Render View (Flat container) */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50/50 rounded-lg border border-slate-200/50 shadow-inner">
         <div className="relative mx-auto w-full flex flex-col items-center">
           {doc.pages.map((p) => {
             const fields = doc.requirements
@@ -143,7 +143,7 @@ export default function DocCanvas() {
               <div
                 id={`page-box-${p.index}`}
                 key={p.index}
-                className="relative mb-10 w-full overflow-hidden rounded-[2rem] border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.02),_0_2px_8px_rgba(0,0,0,0.01)] bg-white/90 backdrop-blur-sm transition-all duration-500 hover:shadow-[0_25px_60px_rgba(2,132,199,0.03)] hover:scale-[1.002]"
+                className="relative mb-6 w-full overflow-hidden rounded-md border border-slate-200 shadow-sm bg-white transition-all duration-300 hover:border-slate-300"
                 style={{
                   maxWidth: `${768 * scale}px`,
                   aspectRatio: `${p.width} / ${p.height}`,
@@ -255,8 +255,8 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
   return (
     <div className="relative h-full w-full">
       {rendering && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-sm z-10">
-          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-brand border-t-transparent shadow-inner" />
+        <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-900 border-t-transparent shadow-sm" />
         </div>
       )}
       <canvas

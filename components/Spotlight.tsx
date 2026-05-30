@@ -24,8 +24,8 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
 
   const maskId = `dt-spotlight-${rect.page}`;
   
-  // Custom liquid bezier curve for a spring-like smooth movement
-  const springTransition = "all 450ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+  // Fast, crisp decel transition curve (no spring/bounce, highly professional)
+  const transitionCurve = "all 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
   return (
     <svg
@@ -42,9 +42,9 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
             y={hole.y}
             width={hole.w}
             height={hole.h}
-            rx="1.2"
+            rx="0.5"
             fill="black"
-            style={{ transition: springTransition }}
+            style={{ transition: transitionCurve }}
           />
         </mask>
       </defs>
@@ -55,35 +55,21 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
         y="0"
         width="100"
         height="100"
-        fill="rgba(15,23,42,0.55)"
+        fill="rgba(15,23,42,0.4)"
         mask={`url(#${maskId})`}
       />
 
-      {/* Halo glow layer (soft backdrop ring) */}
+      {/* The sharp active border drawn on top (clean charcoal line, no neon glow) */}
       <rect
         x={hole.x}
         y={hole.y}
         width={hole.w}
         height={hole.h}
-        rx="1.2"
+        rx="0.5"
         fill="none"
-        stroke="#38bdf8"
-        strokeWidth="1.2"
-        opacity="0.25"
-        style={{ transition: springTransition }}
-      />
-
-      {/* The crisp active border drawn on top */}
-      <rect
-        x={hole.x}
-        y={hole.y}
-        width={hole.w}
-        height={hole.h}
-        rx="1.2"
-        fill="none"
-        stroke="#38bdf8"
-        strokeWidth="0.4"
-        style={{ transition: springTransition }}
+        stroke="#0f172a"
+        strokeWidth="0.3"
+        style={{ transition: transitionCurve }}
       />
     </svg>
   );

@@ -77,22 +77,19 @@ export default function Uploader() {
 
   return (
     <div className="mx-auto w-full max-w-xl text-center px-4 animate-fadeIn">
-      {/* Dashed Drag & Drop Box with iOS 26 Glassmorphic styling */}
+      {/* Flat, Sharp Drag & Drop Box (Linear/Vercel styling) */}
       <div
         onDragEnter={handleDrag}
         onDragOver={handleDrag}
         onDragLeave={handleDrag}
         onDrop={handleDrop}
         onClick={() => !loading && inputRef.current?.click()}
-        className={`group relative flex flex-col items-center justify-center gap-6 rounded-[2.2rem] p-12 text-center cursor-pointer transition-all duration-500 overflow-hidden ios-glass ios-glass-hover ${
+        className={`group relative flex flex-col items-center justify-center gap-6 rounded-lg border border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
           dragActive
-            ? "border-brand bg-gradient-to-b from-brand-soft/75 to-brand-soft/30 scale-[1.02] shadow-2xl ring-4 ring-brand/15"
-            : ""
-        } ${loading ? "pointer-events-none opacity-85" : ""}`}
+            ? "border-slate-900 bg-slate-50 scale-[1.005]"
+            : "border-slate-350 bg-white hover:border-slate-900 hover:bg-slate-50/50"
+        } ${loading ? "pointer-events-none opacity-80" : ""}`}
       >
-        {/* Soft background light projection */}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-brand/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-
         <input
           ref={inputRef}
           type="file"
@@ -106,48 +103,40 @@ export default function Uploader() {
         />
 
         {loading ? (
-          // Premium Glass-Spinner loading block
-          <div className="flex flex-col items-center gap-5 py-4 z-10">
-            <div className="relative flex items-center justify-center">
-              {/* Outer soft glowing halo */}
-              <div className="absolute h-16 w-16 rounded-full border-4 border-brand/10 animate-ping" />
-              {/* Inner loading ring */}
-              <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-brand border-t-transparent shadow-inner" />
-            </div>
+          // Crisp, minimal loading block
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-900 border-t-transparent" />
             <div>
-              <p className="text-lg font-black text-slate-800 animate-pulse tracking-tight">
-                AI Analizador activado…
+              <p className="text-sm font-bold text-slate-900">
+                Analyzing document with AI…
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 max-w-[280px] mx-auto leading-relaxed">
-                Mapping requirements, indexing fields, and projecting spatial coordinate overlays.
+              <p className="mt-1 text-xs text-slate-500 max-w-[260px] mx-auto leading-relaxed">
+                Extracting legal clauses, mapping form fields, and preparing active overlays.
               </p>
             </div>
           </div>
         ) : (
-          // Glass Idle upload state
-          <div className="flex flex-col items-center gap-4 z-10">
-            {/* Glowing Icon Wrapper */}
-            <div className="relative w-20 h-20 rounded-[1.3rem] bg-gradient-to-br from-white/90 to-white/30 flex items-center justify-center text-4xl shadow-md border border-white/60 group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-lg transition-all duration-500">
-              <span className="group-hover:animate-bounce select-none">📸</span>
-              {/* Ambient ground shadow below the icon */}
-              <div className="absolute -bottom-1 w-12 h-1.5 bg-slate-400/20 rounded-full blur-[2px]" />
+          // Sharp, minimal idle upload state
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-3xl select-none grayscale group-hover:grayscale-0 transition-all duration-300">
+              📄
             </div>
             
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-black text-slate-855 tracking-tight leading-none">
-                Scan or drop your document
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                Upload your document to begin
               </h3>
-              <p className="text-sm font-medium text-slate-500 max-w-sm mx-auto leading-relaxed">
-                Supports PDF or photo formats. Real-time extraction converts scanned images instantly.
+              <p className="text-xs font-medium text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Drag and drop your PDF or image here, or browse.
               </p>
             </div>
 
-            {/* Glass format chips */}
-            <div className="flex gap-2 mt-2">
-              {["PDF", "PNG", "JPEG"].map((ext) => (
+            {/* Flat format chips */}
+            <div className="flex gap-1.5 mt-1">
+              {["PDF", "PNG", "JPG"].map((ext) => (
                 <span
                   key={ext}
-                  className="px-3 py-1 text-[9px] font-black tracking-wider text-slate-500 bg-white/50 backdrop-blur-sm rounded-full border border-white/60 shadow-sm"
+                  className="px-2 py-0.5 text-[10px] font-bold tracking-tight text-slate-500 bg-slate-100 rounded border border-slate-200/50 select-none"
                 >
                   {ext}
                 </span>
@@ -157,18 +146,18 @@ export default function Uploader() {
         )}
       </div>
 
-      {/* Redesigned glassy error block */}
+      {/* Redesigned minimal error block */}
       {error && (
-        <div className="mt-5 rounded-[1.5rem] bg-red-50/50 backdrop-blur-md border border-red-100 p-4 text-sm text-red-600 flex items-start gap-3 text-left animate-fadeIn shadow-lg">
-          <span className="text-lg select-none">🚨</span>
+        <div className="mt-4 rounded-md bg-rose-50 border border-rose-100 p-3 text-xs text-rose-700 flex items-start gap-2.5 text-left animate-fadeIn shadow-sm">
+          <span className="text-sm select-none">⚠️</span>
           <div className="space-y-0.5">
-            <p className="font-bold text-red-700">Service Alert</p>
-            <p className="text-red-650 leading-relaxed font-medium">{error}</p>
+            <p className="font-bold">Analysis Failed</p>
+            <p className="text-rose-600 font-medium leading-relaxed">{error}</p>
           </div>
         </div>
       )}
 
-      {/* Deep iOS-style slate sample launcher button */}
+      {/* Sleek, sharp Vercel-style sample launcher button */}
       <button
         type="button"
         onClick={() => {
@@ -178,10 +167,10 @@ export default function Uploader() {
           loadDoc(MOCK_DOC);
         }}
         disabled={loading}
-        className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-slate-900 text-white font-extrabold px-8 py-4 text-sm shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 border border-white/10"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-slate-900 text-white font-bold px-6 py-2.5 text-xs shadow-sm hover:bg-slate-800 active:scale-98 transition-all disabled:opacity-50 border border-slate-950"
       >
         <span>✨</span>
-        <span>Launch SBA 7(a) Loan Sample</span>
+        <span>Open SBA 7(a) Loan Sample</span>
       </button>
     </div>
   );
