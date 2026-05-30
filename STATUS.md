@@ -9,7 +9,7 @@ _Last updated: base template shipped — start of Phase 1_
 |---|---|---|---|---|---|
 | **Preston** (Lead) | Claude Code | `phase1-preston` | Spine (`types`/`store`/`ai`) + analyze/chat routes + Workspace + integration + deploy | 🟡 in progress | — |
 | **Michael** | Claude Code | `phase1-michael` | Engine: SBA mock, extract, chat-grounding, export, prompts, eval harness | ⚪ not started | — |
-| **Sawyer** | Gemini (Antigravity) | `phase1-sawyer` | DocCanvas + FieldOverlay + Spotlight + Uploader + theme | ⚪ not started | — |
+| **Sawyer** | Gemini (Antigravity) | `phase1-sawyer` | DocCanvas + FieldOverlay + Spotlight + Uploader + theme | 🟢 PR open | — |
 | **Aiden** | Gemini (Antigravity) | `phase1-aiden` | Checklist + GuideBox + Tour + Chat widget + RiskSummary + demo + pitch | ⚪ not started | — |
 
 Legend: ⚪ not started · 🟡 in progress · 🟢 PR open · ✅ merged · 🔴 blocked
