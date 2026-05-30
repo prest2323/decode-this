@@ -67,7 +67,7 @@ export default function LiveDemo() {
         }
         return prev + 1;
       });
-    }, 2800);
+    }, 3200);
     return () => clearInterval(id);
   }, []);
 
@@ -202,7 +202,7 @@ export default function LiveDemo() {
             >
               {step.spot && (
                 <div
-                  className="halo-breathe absolute left-3 right-3 rounded-xl transition-all duration-700 ease-out"
+                  className="halo-breathe absolute left-3 right-3 rounded-xl transition-all duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                   style={{
                     top: `${step.spot.top}%`,
                     height: `${step.spot.height}%`,
@@ -214,22 +214,26 @@ export default function LiveDemo() {
 
             {/* guide card */}
             {!done ? (
-              <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-line bg-card/95 p-3.5 shadow-lift backdrop-blur-sm transition-all duration-500">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-calm">
-                    Guide
+              <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-line bg-card/95 p-3.5 shadow-lift backdrop-blur-sm">
+                {/* keyed by step -> the content gently crossfades in each step
+                    instead of snapping, so it stays in sync with the spotlight glide */}
+                <div key={i} className="animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-calm">
+                      Guide
+                    </div>
+                    {step.flag && (
+                      <span className="rounded-full bg-clay-soft px-2 py-0.5 text-[10px] font-medium text-clay">
+                        {step.flag}
+                      </span>
+                    )}
                   </div>
-                  {step.flag && (
-                    <span className="rounded-full bg-clay-soft px-2 py-0.5 text-[10px] font-medium text-clay">
-                      {step.flag}
-                    </span>
-                  )}
-                </div>
-                <div className="font-display mt-1 text-[13px] font-semibold leading-snug text-ink">
-                  {step.guideTitle}
-                </div>
-                <div className="mt-1 text-[11px] leading-relaxed text-ink-soft">
-                  {step.guideBody}
+                  <div className="font-display mt-1 text-[13px] font-semibold leading-snug text-ink">
+                    {step.guideTitle}
+                  </div>
+                  <div className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                    {step.guideBody}
+                  </div>
                 </div>
               </div>
             ) : (
