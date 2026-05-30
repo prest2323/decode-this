@@ -19,7 +19,15 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
         <mask id="dt-spotlight">
           <rect x="0" y="0" width="100" height="100" fill="white" />
           {hole && (
-            <rect x={hole.x} y={hole.y} width={hole.w} height={hole.h} rx="0.8" fill="black" />
+            <rect 
+              x={hole.x} 
+              y={hole.y} 
+              width={hole.w} 
+              height={hole.h} 
+              rx="0.8" 
+              fill="black" 
+              className="transition-all duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]" 
+            />
           )}
         </mask>
       </defs>
@@ -41,7 +49,7 @@ export default function Spotlight({ rect }: { rect: Rect | null }) {
           fill="none"
           stroke="#f59e0b"
           strokeWidth="0.5"
-          className="transition-all duration-300"
+          className="transition-all duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]"
         />
       )}
     </svg>
