@@ -26,7 +26,7 @@
 
 ## The queue (priority order — demo-critical first)
 
-- [ ] 1. **🔴 INSTALL + WORKER FIRST — make pdfjs-dist run on Next 16.** This unblocks everything. From the repo root:
+- [x] 1. **🔴 INSTALL + WORKER FIRST — make pdfjs-dist run on Next 16.** This unblocks everything. From the repo root:
   ```bash
   npm i pdfjs-dist
   ```

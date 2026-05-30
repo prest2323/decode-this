@@ -9,6 +9,9 @@ import { useDoc } from "@/lib/store";
 import FieldOverlay from "@/components/FieldOverlay";
 import Spotlight from "@/components/Spotlight";
 import GuideBox from "@/components/GuideBox";
+import * as pdfjsLib from "pdfjs-dist";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 export default function DocCanvas() {
   const { doc, active } = useDoc();
