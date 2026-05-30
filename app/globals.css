@@ -17,7 +17,32 @@
   --radius-sm: 0px;
 }
 
-/* 1. Global background and text layout */
+/* 1. High specificity landing page legibility overrides */
+h1, h2, h3, h4, h5, h6, 
+h1.text-slate-900, 
+h1.text-4xl,
+main h1, 
+header h1,
+.text-slate-900,
+[class*="text-slate-900"] {
+  color: #ffffff !important;
+}
+
+p, span, div, 
+main p,
+main p.text-slate-500,
+.text-slate-550,
+.text-slate-600, 
+.text-slate-500, 
+[class*="text-slate-600"] {
+  color: #cccccc !important;
+}
+
+.text-slate-400, .text-slate-350, [class*="text-slate-400"] {
+  color: #858585 !important;
+}
+
+/* 2. Global background and text layout */
 html, body {
   background-color: #1e1e1e !important;
   background-image: none !important;
@@ -31,25 +56,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 2. Global Dark Panel Overrides */
+/* 3. Global Dark Panel Overrides */
 section, aside, header, .bg-white, .sharp-card, [class*="bg-white"] {
   background-color: #252526 !important;
   border-color: #3c3c3c !important;
   color: #cccccc !important;
   border-radius: 2px !important;
-}
-
-/* 3. Text and Headers Color Overrides */
-h1, h2, h3, h4, h5, h6, .text-slate-900, .text-slate-800, [class*="text-slate-900"], [class*="text-slate-850"] {
-  color: #ffffff !important;
-}
-
-p, span, div, .text-slate-650, .text-slate-600, .text-slate-500, [class*="text-slate-600"] {
-  color: #cccccc !important;
-}
-
-.text-slate-400, .text-slate-350, [class*="text-slate-400"] {
-  color: #858585 !important;
 }
 
 /* 4. Global Border Overrides */
@@ -158,4 +170,37 @@ input:focus, select:focus, textarea:focus {
 
 .animate-fadeIn {
   animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ========================================================
+   9. HIGH-SPECIFICITY LANDING PAGE & HEADER LEGIBILITY OVERRIDES
+   ======================================================== */
+
+/* Ensure the top landing page title "Decode This" is bright white and has a premium contrast */
+main header h1,
+main h1.text-slate-900,
+h1.text-slate-900,
+.text-4xl.text-slate-900,
+main h1 {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important; /* Premium subtle shadow for extra crispness */
+}
+
+/* Also ensure all top document-header titles do not blend with the dark panels */
+header .text-slate-900,
+main header .text-slate-900,
+div.text-slate-900,
+.text-sm.font-bold.text-slate-900,
+span.text-slate-900 {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Ensure the landing page paragraph text remains legible */
+main header p,
+main p.text-slate-500,
+.text-slate-500 {
+  color: #cccccc !important;
+  opacity: 0.9 !important;
 }
