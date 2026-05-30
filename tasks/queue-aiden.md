@@ -49,15 +49,13 @@ const {
 4. Ping Preston **"✅ Done: <task>"** then start the next. When all `[x]`: **"🟢 Queue empty."**
 > Never push to `main`, never force-push, never `git add -A` blindly, never commit `.env.local` or `node_modules`. Build against mock — you never wait on the backend.
 
-## The queue (priority order — demo-critical first)
-
-- [ ] 1. **🔴 RiskSummary — the PROTECT view (first thing judges see).** In `components/RiskSummary.tsx` (`"use client"`), read `const { doc, lang } = useDoc();`, guard `if (!doc) return null;`. Render:
+## Th- [x] 1. **🔴 RiskSummary — the PROTECT view (first thing judges see).** In `components/RiskSummary.tsx` (`"use client"`), read `const { doc, lang } = useDoc();`, guard `if (!doc) return null;`. Render:
   - a heading: `doc.docType[lang]` (e.g. "SBA 7(a) Loan Application"),
   - the 3-sentence plain summary: `doc.summary[lang]` in a calm card (`className="rounded-xl bg-white/80 p-5 text-base leading-relaxed text-slate-700"`),
   - then map `doc.topFlags` to colored **flag chips** (reuse the chip in task 2). Sort traps first: deadline/fee/legal-risk/background-check/scam before tip.
   Layout the chips with `className="flex flex-wrap gap-2"`. This is the "we protect you" moment — make it legible from across a room.
 
-- [ ] 2. **🔴 Flag chip helper (used by RiskSummary + ChecklistPanel).** Inside `components/RiskSummary.tsx`, export a small `FlagChip` component: `export function FlagChip({ flag, lang }: { flag: Flag; lang: Lang }) {...}`. Import `Flag`, `Lang` from `"@/lib/types"`. Map `flag.kind` → an emoji + Tailwind color, render `flag.label[lang]` (and `flag.date` if present). Use these exact classes per kind so colors are consistent everywhere:
+- [x] 2. **🔴 Flag chip helper (used by RiskSummary + ChecklistPanel).** Inside `components/RiskSummary.tsx`, export a small `FlagChip` component: `export function FlagChip({ flag, lang }: { flag: Flag; lang: Lang }) {...}`. Import `Flag`, `Lang` from `"@/lib/types"`. Map `flag.kind` → an emoji + Tailwind color, render `flag.label[lang]` (and `flag.date` if present). Use these exact classes per kind so colors are consistent everywhere:
   ```tsx
   const STYLE: Record<FlagKind, {icon: string; cls: string}> = {
     deadline:           { icon: "⏰", cls: "bg-red-100 text-red-800 ring-red-200" },
@@ -71,15 +69,15 @@ const {
   ```
   (`FlagKind` is in `lib/types.ts` — import it.) Show date as ` · ${flag.date}` when `flag.date` is truthy.
 
-- [ ] 3. **🔴 ChecklistPanel — the requirement list (the spine of the UI).** In `components/ChecklistPanel.tsx` (`"use client"`), `const { doc, lang, activeIndex, goTo, setStatus } = useDoc();`, guard null. Map `doc.requirements` (already ordered by `order`) to clickable rows. Each row:
+- [x] 3. **🔴 ChecklistPanel — the requirement list (the spine of the UI).** In `components/ChecklistPanel.tsx` (`"use client"`), `const { doc, lang, activeIndex, goTo, setStatus } = useDoc();`, guard null. Map `doc.requirements` (already ordered by `order`) to clickable rows. Each row:
   - a **type icon** by `req.type`: `"fill-field"`→✏️, `"gather-document"`→📄, `"external-action"`→🌐, `"sign"`→🖊️, `"pay-fee"`→💳,
   - the title `req.title[lang]`,
   - **flag chips** for `req.flags` (reuse `FlagChip` from task 2 — small),
   - a **status control**: a checkbox/toggle that calls `setStatus(req.id, req.status === "done" ? "todo" : "done")`.
   - Clicking the row body calls `goTo(index)`. Highlight the active row when `index === activeIndex` (`className` includes `ring-2 ring-indigo-500 bg-indigo-50`). Make the row a real `<button>` for keyboard focus.
-  Done rows get `line-through text-slate-400 opacity-70`. Add a top counter: `{done}/{total} steps done`.
+  - Done rows get `line-through text-slate-400 opacity-70`. Add a top counter: `{done}/{total} steps done`.
 
-- [ ] 4. **🔴 GuideBox — the floating guide card with COLLISION-FREE placement (the user explicitly demanded this).** In `components/GuideBox.tsx` (`"use client"`), `const { active, lang, next, prev, setStatus, activeIndex, doc } = useDoc();`, guard `if (!active) return null;`. The card shows: `active.title[lang]` (bold), `active.guidance[lang]` (plain text), this requirement's flag chips, and a button row: **Back** (`prev`), **Mark done** (`setStatus(active.id, "done")` then `next()`), **Next** (`next`). Then place it in the **largest free quadrant relative to `active.spotlight`** so it NEVER covers the focused field:
+- [x] 4. **🔴 GuideBox — the floating guide card with COLLISION-FREE placement (the user explicitly demanded this).** In `components/GuideBox.tsx` (`"use client"`), `const { active, lang, next, prev, setStatus, activeIndex, doc } = useDoc();`, guard `if (!active) return null;`. The card shows: `active.title[lang]` (bold), `active.guidance[lang]` (plain text), this requirement's flag chips, and a button row: **Back** (`prev`), **Mark done** (`setStatus(active.id, "done")` then `next()`), **Next** (`next`). Then place it in the **largest free quadrant relative to `active.spotlight`** so it NEVER covers the focused field:
   - The GuideBox is rendered **inside the same positioned container as DocCanvas/Spotlight** (Preston's layout passes you the canvas size, OR you read it from a `ref` on the wrapper). Convert the normalized spotlight rect to pixels: `sx = spot.x*W, sy = spot.y*H, sw = spot.w*W, sh = spot.h*H` where `W,H` are the rendered canvas px size.
   - Compute free space on each side of the spotlight and drop the card into the side with the most room. Verified placement math (pure geometry, no lib):
     ```ts
@@ -106,7 +104,7 @@ const {
     ```
   - Apply with `style={{ position: "absolute", left: pos.left, top: pos.top, width: GUIDE_W }}` and `className="z-30 rounded-xl bg-white p-4 shadow-2xl ring-1 ring-slate-200"`. Recompute in a `useMemo` keyed on `[active?.id, W, H]`. If `active.spotlight` is null (a `gather-document`/`external-action` step with no on-page field), center the card instead.
 
-- [ ] 5. **🔴 TourController — step nav + progress bar + keyboard arrows.** In `components/TourController.tsx` (`"use client"`), `const { doc, activeIndex, next, prev, goTo } = useDoc();`, guard null. Render:
+- [x] 5. **🔴 TourController — step nav + progress bar + keyboard arrows.** In `components/TourController.tsx` (`"use client"`), `const { doc, activeIndex, next, prev, goTo } = useDoc();`, guard null. Render:
   - **Prev / Next buttons** wired to `prev()`/`next()` (disable Prev at `activeIndex===0`, Next at `activeIndex===doc.requirements.length-1`),
   - `Step {activeIndex+1} of {doc.requirements.length}`,
   - an **accessible progress bar** (verified ARIA pattern — use a native `<progress>` OR `role="progressbar"`):
@@ -134,7 +132,7 @@ const {
     }, [next, prev]);
     ```
 
-- [ ] 6. **🟠 ChatWidget — docked, context-aware chat grounded in the doc + current step.** In `components/ChatWidget.tsx` (`"use client"`), `const { doc, lang, active } = useDoc();`. Local state: `const [msgs, setMsgs] = useState<{role:"user"|"ai"; text:string}[]>([])`, `const [q, setQ] = useState("")`, `const [busy, setBusy] = useState(false)`. On send, POST to `/api/chat` (React 19 verified: async function called from the click/submit handler). **Exact fetch shape — body matches `ChatRequest`, response is `ApiResponse<ChatResult>`:**
+- [x] 6. **🟠 ChatWidget — docked, context-aware chat grounded in the doc + current step.** In `components/ChatWidget.tsx` (`"use client"`), `const { doc, lang, active } = useDoc();`. Local state: `const [msgs, setMsgs] = useState<{role:"user"|"ai"; text:string}[]>([])`, `const [q, setQ] = useState("")`, `const [busy, setBusy] = useState(false)`. On send, POST to `/api/chat` (React 19 verified: async function called from the click/submit handler). **Exact fetch shape — body matches `ChatRequest`, response is `ApiResponse<ChatResult>`:**
   ```ts
   async function send() {
     if (!q.trim() || !doc) return;
@@ -161,16 +159,16 @@ const {
   ```
   Import `ChatRequest, ChatResult, ApiResponse` from `"@/lib/types"`. Render a scrollable message list (user right / ai left bubbles), an input + Send button (Enter submits, disabled while `busy`), and a "thinking…" indicator when `busy`. Seed one greeting bubble that names the active step so it feels grounded: `lang==="es" ? "Pregúntame sobre este paso." : "Ask me anything about this step."`
 
-- [ ] 7. **🟠 Bilingual everywhere + the language toggle reads through.** Audit ALL five of your components: every visible string must come from `[lang]` on a `Record<Lang,string>`, and any hard-coded English UI chrome (button labels "Back"/"Next"/"Mark done"/"Send", the "Step X of Y" text, the chat greeting) must have an ES variant via a tiny local `t(en, es)` helper: `const t = (en:string, es:string) => lang === "es" ? es : en;`. Flip `setLang("es")` and confirm the whole guidance UX speaks Spanish. This is our accessibility differentiator — don't skip it.
+- [x] 7. **🟠 Bilingual everywhere + the language toggle reads through.** Audit ALL five of your components: every visible string must come from `[lang]` on a `Record<Lang,string>`, and any hard-coded English UI chrome (button labels "Back"/"Next"/"Mark done"/"Send", the "Step X of Y" text, the chat greeting) must have an ES variant via a tiny local `t(en, es)` helper: `const t = (en:string, es:string) => lang === "es" ? es : en;`. Flip `setLang("es")` and confirm the whole guidance UX speaks Spanish. This is our accessibility differentiator — don't skip it.
 
-- [ ] 8. **🟠 Empty / loading / done states.** In each component, handle the pre-upload state cleanly (`!doc` → friendly placeholder, not a blank box). In ChecklistPanel + TourController, when **all** requirements are `done`, show a celebratory "✅ You're ready to file" banner with an **Export** call-to-action that triggers `exportAs("pdf")`. This is the satisfying finish for the demo.
+- [x] 8. **🟠 Empty / loading / done states.** In each component, handle the pre-upload state cleanly (`!doc` → friendly placeholder, not a blank box). In ChecklistPanel + TourController, when **all** requirements are `done`, show a celebratory "✅ You're ready to file" banner with an **Export** call-to-action that triggers `exportAs("pdf")`. This is the satisfying finish for the demo.
 
-- [ ] 9. **🟢 demo/ — script the on-stage walkthrough.** Create `demo/SCRIPT.md`: the exact 90-second click path on the SBA mock — (1) upload → PROTECT summary + traps, (2) point at the personal-guarantee / guaranty-fee / deadline flags, (3) open CHECKLIST, click a `gather-document` step (tax return) vs an on-page `fill-field` step, (4) start the GUIDED tour, show a grouped spotlight (street+city+state+zip in ONE), type into a field, (5) ask the chat "what's the guaranty fee?", (6) Export to PDF. Note the exact buttons to click and what to say. Add `demo/CHECKLIST.md`: a pre-demo smoke test (mock loads, ES toggle works, export downloads).
+- [x] 9. **🟢 demo/ — script the on-stage walkthrough.** Create `demo/SCRIPT.md`: the exact 90-second click path on the SBA mock — (1) upload → PROTECT summary + traps, (2) point at the personal-guarantee / guaranty-fee / deadline flags, (3) open CHECKLIST, click a `gather-document` step (tax return) vs an on-page `fill-field` step, (4) start the GUIDED tour, show a grouped spotlight (street+city+state+zip in ONE), type into a field, (5) ask the chat "what's the guaranty fee?", (6) Export to PDF. Note the exact buttons to click and what to say. Add `demo/CHECKLIST.md`: a pre-demo smoke test (mock loads, ES toggle works, export downloads).
 
-- [ ] 10. **🟢 PITCH.md — rewrite around the SBA-loan hero.** Tear out the old letter-decoder pitch. New 90-second structure: **Hook** ("An SBA 7(a) loan app is 30+ pages of legal traps — a personal guarantee that puts your house on the line, a guaranty fee nobody explains, hard deadlines."). **Problem** (small-business owners give up or overpay a consultant). **Demo** (the 6 beats from task 9). **Why us** (the Requirement insight — one extraction powers protect + checklist + guided; bilingual; works offline on mock). **Ask/close.** Keep it tight and confident.
+- [x] 10. **🟢 PITCH.md — rewrite around the SBA-loan hero.** Tear out the old letter-decoder pitch. New 90-second structure: **Hook** ("An SBA 7(a) loan app is 30+ pages of legal traps — a personal guarantee that puts your house on the line, a guaranty fee nobody explains, hard deadlines."). **Problem** (small-business owners give up or overpay a consultant). **Demo** (the 6 beats from task 9). **Why us** (the Requirement insight — one extraction powers protect + checklist + guided; bilingual; works offline on mock). **Ask/close.** Keep it tight and confident.
 
-- [ ] 11. **🟢 "What we learned" + judge one-pager.** In `PITCH.md`, add 3 honest bullets (e.g. grouping fields into one spotlight, collision-free guide placement math, grounding chat without a vector DB). Then a short printable one-pager section: what the platform does + the deploy QR (get the live URL from Michael's Vercel deploy).
+- [x] 11. **🟢 "What we learned" + judge one-pager.** In `PITCH.md`, add 3 honest bullets (e.g. grouping fields into one spotlight, collision-free guide placement math, grounding chat without a vector DB). Then a short printable one-pager section: what the platform does + the deploy QR (get the live URL from Michael's Vercel deploy).
 
-- [ ] 12. **🟢 Polish pass — motion + responsiveness.** Smooth the active-row highlight and the spotlight/guide-box transition (Tailwind `transition-all duration-200`). Confirm the layout doesn't break narrow: ChatWidget collapsible on small screens, ChecklistPanel scrolls (`overflow-y-auto max-h-[...]`). Keep it calm — this app reduces anxiety; the UI should feel like it too.
+- [x] 12. **🟢 Polish pass — motion + responsiveness.** Smooth the active-row highlight and the spotlight/guide-box transition (Tailwind `transition-all duration-200`). Confirm the layout doesn't break narrow: ChatWidget collapsible on small screens, ChecklistPanel scrolls (`overflow-y-auto max-h-[...]`). Keep it calm — this app reduces anxiety; the UI should feel like it too.
 
 > **Coming next from Preston (don't block on it):** a per-field **inline hint** that the GuideBox can show when a specific `Field` is focused inside the active requirement. When the contract hook for "active field" lands, you'll wire it into `GuideBox`. He'll ping you with the shape.

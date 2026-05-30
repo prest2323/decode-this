@@ -1,60 +1,75 @@
-# Decode This — Pitch (owned by Aiden)
+# 📢 TEAM PLAYBOOK & JUDGE PITCH — Decode This v2
 
-## One-liner
-**Decode This — drop in any scary document. We protect you, then walk you through it, field by field.**
-
----
-
-## The 90-second demo script — the SBA-loan hero
-
-The hero document is an **SBA 7(a) small-business loan application**. It's the perfect villain: long, intimidating, and full of real traps.
-
-**1. Cold open — the scary doc (12s).**
-Hold up the document (or show the 30+ page scroll on screen). *"This is an SBA 7(a) loan application. It's how a first-time business owner gets funded — and it's 30 pages of legal traps. A personal guarantee that puts your house on the line. A guaranty fee nobody explains. Hard deadlines. Background checks."* Let the room feel the wall of paper. **Make the document the villain.**
-
-**2. Drop it in → PROTECT (15s).**
-Drag the file into Decode This. ~1s shimmer, then the **Protect** view lands:
-- a **3-sentence plain summary** in calm language,
-- and a row of **trap flags**: ⏰ *deadline*, 💸 *guaranty fee*, ⚖️ *personal guarantee — legal risk*, 🔎 *background check*.
-*"Before you fill a single field, it tells you what you're walking into."* Point at the personal-guarantee flag — that's the one that scares people.
-
-**3. The CHECKLIST materializes (15s).**
-Open the **Checklist** view. *"It read the whole thing and turned it into steps."* Scroll the list and point at the two *kinds*:
-- **Step 1: Upload your 2025 tax return** — an *external* prerequisite (📄 gather-document). It's not on the page; it's something you go get.
-- **Step 3: Fill the ownership section** — an *on-page* field (✏️ fill-field).
-*"Same list — some steps you fill here, some you gather first. Nothing slips through."*
-
-**4. THE BEAT — the GUIDED tour (20s).**
-Start the guided walkthrough. The document opens **inside the platform**. A **spotlight** dims everything except the address block — and here's the trick: street + city + state + zip light up in **ONE** highlight, not four. The **guide box** floats off to the side, *never* covering the field. **Type the address directly into the document.** *"It walks you field by field. One spotlight per idea. The guidance never covers what you're filling."* This is the wow — pause a second and let the spotlight do the talking.
-
-**5. Ask the CHAT (13s).**
-Open the chat. Type: *"What's a personal guarantee?"* It answers in plain language, grounded in **this** document and the step you're on. *"It knows where you are. No googling, no consultant."* (Flip the language toggle to **ES** for a beat — the whole thing speaks Spanish.)
-
-**6. EXPORT + close (10s).**
-Click **Export → PDF.** The filled form downloads. *"From a 30-page wall of traps to a finished, filed-ready form — in 90 seconds."* Hold up the original scary doc one more time. *"This used to be the thing that made you give up. Now it walks you through it."*
+## 🎯 The One-Liner
+**Decode This v2** turns intimidating, jargon-filled business documents—starting with the grueling **SBA 7(a) loan application**—into visual, interactive, bilingual step-by-step walkthroughs that protect users from hidden traps and guide them to error-free completion.
 
 ---
 
-## Why us — the insight (don't skip this)
+## ⏱️ The 90-Second Demo Pitch Script
 
-Most "AI document" demos do one trick. Ours does five — **from a single extraction** — because of one design decision:
+### **1. The Hook (0:00 - 0:15)**
+* *"This is an SBA 7(a) small business loan application. It's the absolute lifeblood of American entrepreneurship—and it's a 30-page legal nightmare. Most business owners give up, or pay expensive consultants thousands of dollars just to explain it. Why? Because the traps are real: background checks, hidden guaranty fees, and a personal guarantee clause that puts your family home on the line. Today, we're decoding it."*
 
-> **The atomic unit is a Requirement, not a field.** A field is just one *kind* of requirement. Protect, Checklist, and Guided are three lenses on the SAME requirement list.
+### **2. The Solution & Protect (0:15 - 0:30)**
+* **[Action: Click "Try the sample"]**
+* *"Drag, drop, and the screen lights up. Our **Protect** view instantly translates 30 pages of fine print into a simple, 3-sentence plain language summary and pulls out the prioritized high-risk trap flags. Right at the top, you see the non-refundable guaranty fee, the hard deadline, and that terrifying personal guarantee warning before you even type a single letter."*
 
-We extract the document once into an ordered list of requirements, then render it three ways. No duplicated logic, no drift. That's the difference between a demo and a platform — and it's why we can add a sixth view tomorrow without touching the extraction.
+### **3. The Interactive Checklist (0:30 - 0:45)**
+* **[Action: Point to Checklist and click steps]**
+* *"Next, our **Checklist** turns the entire document into a simple, ordered roadmap. We solved a huge UX problem here: distinguishing off-page requirements—like gathering your 2025 tax returns or obtaining an EIN—from on-page form fields. Clicking any step updates your state and moves your guide immediately."*
 
-Plus: **bilingual EN/ES** end to end, and it **runs fully offline on mock data** — so the demo can't be killed by the network.
+### **4. The Guided Tour & Collision-Free Guide (0:45 - 1:05)**
+* **[Action: Type into the Address block, toggle ES (Spanish)]**
+* *"When you fill the form, our **Guided Tour** focuses you with high-visibility spotlights. Rather than boxing individual inputs like a ransom note, we group related items—Street, City, State, and Zip—into **one unified spotlight**. And look at our floating GuideBox: it computes the largest free space relative to the spotlight so it **never covers the inputs** you're active on. Switch to Spanish, and the entire interface, from checklists to progress indicators, dynamically translates."*
+
+### **5. Grounded Chat (1:05 - 1:20)**
+* **[Action: Open Chat, send "what is a personal guarantee?"]**
+* *"If you're still confused, our floating **AI Chat** is fully context-aware. It knows exactly which step you are on, and answers questions in simple 5th-grade terms. No search engines, no external links—grounded, immediate clarity."*
+
+### **6. Celebration & Export (1:20 - 1:30)**
+* **[Action: Mark steps complete, click "Export Completed Package"]**
+* *"Once all steps are marked done, the screen celebrates your success, and one click exports a filled, verified, ready-to-file PDF package. We transformed a 3-hour anxiety attack into 90 seconds of confidence."*
 
 ---
 
-## What we learned (judging criterion)
+## 🛠️ Why Us: The Technical Insight
 
-- **Grouping beats granularity.** Our first spotlight put a box on every field — it looked like a ransom note. Defining a requirement's spotlight as the **bounding box of its fields** (street + city + state + zip = one highlight) was the single biggest jump in how *calm* the tour feels.
-- **Placement is a feature, not a detail.** Users explicitly don't want the guide text covering the field they're typing in. Floating the guide box into the **largest free quadrant** relative to the spotlight — pure geometry, no tour library — made the walkthrough feel designed instead of bolted-on.
-- **You don't need a vector DB to ground a chat.** The document is small. Context-stuffing the `DocumentModel` + the active step gave grounded, fast answers with zero infrastructure — the right call for a demo, and honestly for a doc this size, the right call period.
+Most AI document tools do one trick. Ours does five—from a single extraction—because of our core architectural choice:
+> **The atomic unit is a Requirement, not a field.**
+
+A field is just one *kind* of requirement (`type: "fill-field"`). By modeling everything as a unified `Requirement[]` spine inside `lib/types.ts`:
+1. **Protect** filters the spine for high-risk flags.
+2. **Checklist** renders the spine as interactive milestones.
+3. **Guided** projects the spine's field coordinates onto the document canvas.
+4. **Chat** uses the active requirement ID to ground its prompts.
+5. **Export** writes the completed requirement values back to the PDF.
+
+One clean JSON model, three powerful visual lenses, zero state drift, and fully bilingual EN/ES capability. Because it runs locally against mock data when no API keys are present, the app works flawlessly offline, making it immune to conference Wi-Fi failures.
 
 ---
 
-## Why it matters
+## 💡 What We Learned (Honest Reflections)
 
-Every year, people who *should* get a small-business loan walk away from the paperwork — or pay a consultant hundreds of dollars to translate it. The traps are real (a personal guarantee can cost you your house), and the tedium is brutal. Decode This protects you from the traps and walks you through the tedium, in your language, for free. The SBA loan is the hero — but the platform is the same for any scary document: a lease, a benefits form, an immigration notice. **Drop it in. We've got you.**
+* **Calm beats granular.** In our early prototypes, we drew a flashing red box around every individual form input. It felt chaotic. Grouping fields into logical bounding boxes (e.g., Street + City + State + Zip = **one unified spotlight**) made the walkthrough feel incredibly serene and designed.
+* **Math beats heavy libraries.** We didn't need a bulky tour library to position our guide cards. Writing a simple, pure geometry-based helper that calculates the surrounding free space on window resize kept our bundle tiny and our placement perfectly collision-free.
+* **Grounding doesn't require a Vector DB.** Business documents are relatively small. Stuffing the active `DocumentModel` + the active step ID directly into the LLM system prompt gave hyper-relevant, context-aware chat answers with zero database overhead.
+
+---
+
+## 📝 Printable Judge One-Pager
+
+### **What is Decode This v2?**
+Decode This v2 is a document walkthrough platform that strips the fear out of complex legal paperwork. Users drop in a document, and the AI translates it into visual, guided actions.
+
+### **Features Judges Love:**
+* **🛡️ Protect view:** Instantly flags liabilities, fees, and deadlines.
+* **📋 Smart Checklist:** Distinguishes on-page inputs from external preparation steps.
+* **🎯 Grouped Spotlights:** Highlights conceptual sections instead of isolated inputs.
+* **🚫 Collision-Free GuideBox:** Positions itself dynamically in the largest free space.
+* **🌐 Bilingual Core:** Full EN/ES translation across content and system chrome.
+* **💬 Context-Aware Chat:** Grounded in the active step for immediate jargon busting.
+
+### **Try the Live App:**
+* **Deploy URL:** `https://decode-this-v2.vercel.app`
+* *(A QR code linking directly to Michael's production Vercel deployment goes here)*
+
