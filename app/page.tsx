@@ -10,6 +10,7 @@ import ReadAloud from "@/components/ReadAloud";
 import MicInput from "@/components/MicInput";
 import ExpressInput from "@/components/ExpressInput";
 import ExpressResultCard from "@/components/ExpressResult";
+import FollowUp from "@/components/FollowUp";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("decode");
@@ -101,6 +102,7 @@ export default function Home() {
                 )}
                 <ResultCard result={decoded} lang={lang} />
               </div>
+              <FollowUp context={decoded} lang={lang} />
             </>
           )}
         </section>

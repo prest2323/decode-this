@@ -8,7 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { ApiRequest, ApiResponse, DecodeResult, ExpressResult } from "@/lib/types";
 import { MOCK_DECODE, MOCK_EXPRESS } from "@/lib/mock";
 import { DECODE_SYSTEM, EXPRESS_SYSTEM, DECODE_TOOL, EXPRESS_TOOL } from "@/lib/prompt";
-import { decodeWithGemini, expressWithGemini } from "@/lib/gemini";
+import { decodeWithGemini, expressWithGemini, followupWithGemini } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,6 +22,12 @@ function provider(): "anthropic" | "gemini" | "mock" {
   if (process.env.GEMINI_API_KEY) return "gemini";
   return "mock";
 }
+
+// Mock answer for the voice follow-up Q&A when there's no key (and for ?demo=1).
+const MOCK_FOLLOWUP: Record<"en" | "es", string> = {
+  en: "If you can't pay or renew in time, call the office at the number on your letter and ask for help or more time — they often have options, and you won't lose your coverage just for asking. A local community organization can also help you for free.",
+  es: "Si no puede pagar o renovar a tiempo, llame a la oficina al número de su carta y pida ayuda o más tiempo — muchas veces tienen opciones, y no perderá su cobertura solo por preguntar. Una organización comunitaria local también puede ayudarle gratis.",
+};
 
 export async function POST(req: NextRequest) {
   let body: ApiRequest;
@@ -38,11 +44,15 @@ export async function POST(req: NextRequest) {
   if (body.mode === "express" && (typeof body.text !== "string" || !body.text.trim())) {
     return json({ ok: false, error: "Nothing to put into words yet — say or type something first." });
   }
+  if (body.mode === "followup" && (typeof body.question !== "string" || !body.question.trim())) {
+    return json({ ok: false, error: "Ask a question first." });
+  }
 
   // Deterministic demo path: /api/decode?demo=1 always returns baked mock data,
   // so the on-stage hero moment never depends on conference wifi.
   if (req.nextUrl.searchParams.get("demo")) {
     if (body.mode === "express") return json({ ok: true, mode: "express", result: MOCK_EXPRESS });
+    if (body.mode === "followup") return json({ ok: true, mode: "followup", result: { answer: MOCK_FOLLOWUP[body.lang] } });
     return json({ ok: true, mode: "decode", result: MOCK_DECODE });
   }
 
@@ -51,6 +61,7 @@ export async function POST(req: NextRequest) {
   // No key anywhere? Return mock so teammates can build the UI without secrets.
   if (which === "mock") {
     if (body.mode === "express") return json({ ok: true, mode: "express", result: MOCK_EXPRESS });
+    if (body.mode === "followup") return json({ ok: true, mode: "followup", result: { answer: MOCK_FOLLOWUP[body.lang] } });
     return json({ ok: true, mode: "decode", result: MOCK_DECODE });
   }
 
@@ -68,6 +79,13 @@ export async function POST(req: NextRequest) {
           ? await expressWithGemini(body.text, body.lang, body.audience)
           : await runExpress(anthropic(), body.text, body.lang, body.audience);
       return json({ ok: true, mode: "express", result });
+    }
+    if (body.mode === "followup") {
+      const result =
+        which === "gemini"
+          ? await followupWithGemini(body.question, body.lang, body.context)
+          : { answer: MOCK_FOLLOWUP[body.lang] };
+      return json({ ok: true, mode: "followup", result });
     }
     return json({ ok: false, error: "Unknown mode." });
   } catch (err) {

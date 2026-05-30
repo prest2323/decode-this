@@ -40,6 +40,8 @@ const EXPRESS_SCHEMA = {
 const DECODE_JSON = `Return a JSON object with: title/meaning/action each as {en, es}; deadline (ISO YYYY-MM-DD or null); urgency one of urgent|normal|ignore|scam; draftReply as {en, es} or null.`;
 const EXPRESS_JSON = `Return a JSON object: {kind, formatted, note}. "formatted" must be in the requested language.`;
 
+const FOLLOWUP_SYSTEM = `You are Decode This. The user just had an official document explained to them and now has a follow-up question. Answer ONLY from the document context provided plus general, accurate, non-legal guidance. Be calm, concrete, and reassuring. Answer in the requested language in plain 5th-grade words, 2-4 sentences. If it truly needs a professional, say so and suggest who to ask. Never invent specific facts that aren't supported by the document.`;
+
 function client() {
   return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 }
@@ -82,6 +84,28 @@ export async function expressWithGemini(
     },
   });
   return normalizeExpress(parseJson(res.text));
+}
+
+export async function followupWithGemini(
+  question: string,
+  lang: Lang,
+  context: DecodeResult,
+): Promise<{ answer: string }> {
+  const langName = lang === "es" ? "Spanish" : "English";
+  const ctx = `Document summary:
+- What it is: ${context.title[lang]}
+- What it means: ${context.meaning[lang]}
+- What to do: ${context.action[lang]}
+- Deadline: ${context.deadline ?? "none"}
+- Urgency: ${context.urgency}`;
+  const res = await client().models.generateContent({
+    model: GEMINI_MODEL,
+    contents: `${ctx}\n\nThe person asks: """${question}"""\n\nAnswer in ${langName}.`,
+    config: { systemInstruction: FOLLOWUP_SYSTEM, temperature: 0.3 },
+  });
+  const answer = (res.text ?? "").trim();
+  if (!answer) throw new Error("Empty follow-up answer");
+  return { answer };
 }
 
 // ---- parsing + normalization (the safety net that prevents UI crashes) ----

@@ -54,9 +54,25 @@ export interface ExpressRequest {
   /** Optional: who it's for, e.g. "my child's teacher". */
   audience?: string;
 }
-export type ApiRequest = DecodeRequest | ExpressRequest;
+// ---- FOLLOWUP: ask a question about a document you just decoded ----
+export interface FollowupRequest {
+  mode: "followup";
+  /** The user's question about the decoded document. */
+  question: string;
+  /** Output language. */
+  lang: Lang;
+  /** The decoded document the question is about — grounds the answer. */
+  context: DecodeResult;
+}
+/** Result of a follow-up question — answer in the requested language. */
+export interface FollowupResult {
+  answer: string;
+}
+
+export type ApiRequest = DecodeRequest | ExpressRequest | FollowupRequest;
 
 export type ApiResponse =
   | { ok: true; mode: "decode"; result: DecodeResult }
   | { ok: true; mode: "express"; result: ExpressResult }
+  | { ok: true; mode: "followup"; result: FollowupResult }
   | { ok: false; error: string };
