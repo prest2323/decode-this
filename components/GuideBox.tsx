@@ -11,26 +11,34 @@ import { FlagChip } from "./RiskSummary";
 export default function GuideBox() {
   const { active, reqs, activeIndex, lang, next, prev, setStatus } = useDoc();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ w: 640, h: 800 });
+  const [parentDim, setParentDim] = useState({ w: 640, h: 800 });
+  const [guideDim, setGuideDim] = useState({ w: 320, h: 180 });
 
   useEffect(() => {
     if (!containerRef.current) return;
     const parent = containerRef.current.parentElement;
     if (!parent) return;
+    const guideEl = containerRef.current;
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width && height) {
-          setDimensions({ w: width, h: height });
-        } else {
-          setDimensions({ w: parent.offsetWidth, h: parent.offsetHeight });
+        if (entry.target === parent) {
+          const { width, height } = entry.contentRect;
+          if (width && height) {
+            setParentDim({ w: width, h: height });
+          } else {
+            setParentDim({ w: parent.offsetWidth, h: parent.offsetHeight });
+          }
+        } else if (entry.target === guideEl) {
+          setGuideDim({ w: guideEl.offsetWidth, h: guideEl.offsetHeight });
         }
       }
     });
 
     resizeObserver.observe(parent);
-    setDimensions({ w: parent.offsetWidth, h: parent.offsetHeight });
+    resizeObserver.observe(guideEl);
+    setParentDim({ w: parent.offsetWidth, h: parent.offsetHeight });
+    setGuideDim({ w: guideEl.offsetWidth, h: guideEl.offsetHeight });
 
     return () => resizeObserver.disconnect();
   }, [active]);
@@ -38,8 +46,8 @@ export default function GuideBox() {
   const style = useMemo<CSSProperties>(() => {
     if (!active) return {};
 
-    const GUIDE_W = 320;
-    const GUIDE_H = 180;
+    const GUIDE_W = guideDim.w || 320;
+    const GUIDE_H = guideDim.h || 180;
     const spot = active.spotlight;
 
     if (!spot) {
@@ -48,13 +56,13 @@ export default function GuideBox() {
         left: "50%",
         top: "50%",
         transform: "translate(-50%, -50%)",
-        width: `${GUIDE_W}px`,
+        width: "320px",
         maxWidth: "calc(100% - 16px)",
       };
     }
 
-    const W = dimensions.w;
-    const H = dimensions.h;
+    const W = parentDim.w;
+    const H = parentDim.h;
     const sx = spot.x * W;
     const sy = spot.y * H;
     const sw = spot.w * W;
@@ -74,7 +82,7 @@ export default function GuideBox() {
     const clampTop = (t: number) => Math.max(8, Math.min(t, H - GUIDE_H - 8));
     const clampLeft = (l: number) => Math.max(8, Math.min(l, W - GUIDE_W - 8));
 
-    let pos = { left: 0, top: 0 };
+    let pos = { left: -9999, top: -9999 };
     for (const side of order) {
       if (side === "right" && space.right >= GUIDE_W + 24) {
         pos = { left: sx + sw + 16, top: clampTop(sy) };
@@ -94,17 +102,18 @@ export default function GuideBox() {
       }
     }
 
-    // Fallback if none of the sides fit comfortably
-    if (pos.left === 0 && pos.top === 0) {
+    // Fallback if none of the sides fit perfectly within the window bounds:
+    // Force it to be strictly OUTSIDE the spotlight on the best available side.
+    if (pos.left === -9999 && pos.top === -9999) {
       const bestSide = order[0];
       if (bestSide === "right") {
-        pos = { left: Math.max(8, W - GUIDE_W - 8), top: clampTop(sy) };
+        pos = { left: sx + sw + 8, top: clampTop(sy) };
       } else if (bestSide === "left") {
-        pos = { left: 8, top: clampTop(sy) };
+        pos = { left: sx - GUIDE_W - 8, top: clampTop(sy) };
       } else if (bestSide === "bottom") {
-        pos = { left: clampLeft(sx), top: Math.max(8, H - GUIDE_H - 8) };
+        pos = { left: clampLeft(sx), top: sy + sh + 8 };
       } else {
-        pos = { left: clampLeft(sx), top: 8 };
+        pos = { left: clampLeft(sx), top: sy - GUIDE_H - 8 };
       }
     }
 
@@ -112,10 +121,10 @@ export default function GuideBox() {
       position: "absolute",
       left: `${pos.left}px`,
       top: `${pos.top}px`,
-      width: `${GUIDE_W}px`,
+      width: "320px",
       maxWidth: "calc(100% - 16px)",
     };
-  }, [active, dimensions]);
+  }, [active, parentDim, guideDim]);
 
   if (!active) return null;
   const isLast = activeIndex >= reqs.length - 1;
