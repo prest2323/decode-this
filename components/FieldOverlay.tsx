@@ -1,14 +1,17 @@
 "use client";
-// FieldOverlay — template owner Sawyer. One editable input positioned on the
-// page by its NORMALIZED rect (-> % of the page box, so it lines up at any zoom).
-// The active requirement's fields glow amber. Reads/writes through useDoc().
+// FieldOverlay — owner Sawyer. One editable control positioned ON the page by
+// its NORMALIZED rect (-> % of the page box, so it lines up at any zoom).
+// Bilingual (label[lang]). The active requirement's fields light up in the
+// brand color and lift above the spotlight dim; the rest stay calm and recede
+// behind it. Reads/writes through useDoc().
 import type { CSSProperties } from "react";
 import { useDoc } from "@/lib/store";
 import type { Field } from "@/lib/types";
 
 export default function FieldOverlay({ field }: { field: Field }) {
-  const { setFieldValue, active } = useDoc();
+  const { setFieldValue, active, lang } = useDoc();
   const isActive = !!active?.fields.some((f) => f.id === field.id);
+  const label = field.label[lang];
 
   const style: CSSProperties = {
     left: `${field.rect.x * 100}%`,
@@ -17,34 +20,73 @@ export default function FieldOverlay({ field }: { field: Field }) {
     height: `${field.rect.h * 100}%`,
   };
 
-  const ring = isActive
-    ? "ring-2 ring-amber-400 z-40 bg-amber-50/90"
-    : "ring-1 ring-slate-300 z-10 bg-white/85";
+  // Active fields sit ABOVE the spotlight dim (z-40 > the dim's z-30) so they
+  // stay bright and editable; inactive fields sit below it (z-10) and recede.
+  const base = "pointer-events-auto absolute rounded-sm outline-none transition-all";
+  const tone = isActive
+    ? "z-40 bg-brand-soft ring-2 ring-brand shadow-sm"
+    : "z-10 bg-surface/85 ring-1 ring-line opacity-90";
+  const textSize = "text-[clamp(7px,1.3vw,14px)]";
 
+  // Checkbox — a tickable box, not a text field.
   if (field.kind === "checkbox") {
     return (
       <input
         type="checkbox"
-        aria-label={field.label.en}
+        aria-label={label}
         checked={field.value === true}
         onChange={(e) => setFieldValue(field.id, e.target.checked)}
         style={style}
-        className={`absolute cursor-pointer accent-amber-500 ${ring}`}
+        className={`${base} cursor-pointer accent-brand ${tone}`}
       />
     );
   }
 
+  // Radio/options — one normalized rect can't host a positioned radio GROUP, so
+  // an on-document dropdown is the pragmatic editable control for an options field.
+  if (field.kind === "radio" && field.options?.length) {
+    const v = typeof field.value === "string" ? field.value : "";
+    return (
+      <select
+        aria-label={label}
+        value={v}
+        onChange={(e) => setFieldValue(field.id, e.target.value)}
+        style={style}
+        className={`${base} ${textSize} px-1 text-ink ${tone}`}
+      >
+        <option value="" disabled>
+          {field.placeholder ?? label}
+        </option>
+        {field.options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  // Everything else is a text-like input: text, number, date, signature.
   const text =
-    typeof field.value === "string" ? field.value : field.value == null ? "" : String(field.value);
+    typeof field.value === "string"
+      ? field.value
+      : field.value == null
+        ? ""
+        : String(field.value);
+  const isSignature = field.kind === "signature";
 
   return (
     <input
-      aria-label={field.label.en}
+      type={field.kind === "date" ? "date" : "text"}
+      inputMode={field.kind === "number" ? "numeric" : undefined}
+      aria-label={label}
       value={text}
-      placeholder={field.placeholder}
+      placeholder={isSignature ? `✍ ${label}` : (field.placeholder ?? label)}
       onChange={(e) => setFieldValue(field.id, e.target.value)}
       style={style}
-      className={`absolute rounded-sm px-1 text-[clamp(7px,1.3vw,14px)] text-slate-900 outline-none placeholder:text-slate-400 ${ring}`}
+      className={`${base} ${textSize} px-1 text-ink placeholder:text-muted ${
+        isSignature ? "font-[cursive] italic" : ""
+      } ${tone}`}
     />
   );
 }
