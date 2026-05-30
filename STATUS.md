@@ -5,12 +5,12 @@
 _Last updated: start of hack_
 
 ## Who's on what
-| Person | Branch | Now building | Status | Blocked on |
-|---|---|---|---|---|
-| Lead (you+Claude) | `main` | Real Claude prompts + deploy | 🟡 in progress | — |
-| Core UI (Claude) | `ui-____` | ResultCard + LanguageToggle | ⚪ not started | — |
-| Input & Voice (Gemini) | `ui-____` | Uploader + ReadAloud + Mic | ⚪ not started | — |
-| Express + Demo (Gemini) | `ui-____` | Express UI + demo docs + pitch | ⚪ not started | — |
+| Person | AI | Branch | Now building | Status | Blocked on |
+|---|---|---|---|---|---|
+| **Preston** (Lead) | Claude 5x | `main` | Real Claude prompts + deploy | 🟡 in progress | API key |
+| **(Claude teammate)** | Claude 5x | `ui-____` | ResultCard + LanguageToggle | ⚪ not started | — |
+| **Sawyer** | Gemini 3.1 Pro | `ui-sawyer` | Uploader + ReadAloud + Mic | ⚪ not started | — |
+| **Aiden** | Gemini 3.1 Pro | `ui-aiden` | Express UI + demo docs + pitch | ⚪ not started | — |
 
 Legend: ⚪ not started · 🟡 in progress · 🟢 PR open · ✅ merged · 🔴 blocked
 
