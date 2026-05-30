@@ -493,10 +493,121 @@ export const MOCK_USCIS: DocumentModel = {
   ],
 };
 
+// ---- Hospital bill — a fee with a pay-by date, a dispute path, a money trap ----
+const billAcctRect: Rect = { page: 0, x: 0.06, y: 0.2, w: 0.3, h: 0.03 };
+const billAmtRect: Rect = { page: 0, x: 0.4, y: 0.2, w: 0.24, h: 0.03 };
+export const MOCK_MEDICAL: DocumentModel = {
+  id: "mock_medical",
+  fileName: "Hospital-Bill.pdf",
+  docType: { en: "Hospital bill / medical statement", es: "Factura de hospital / estado de cuenta médico" },
+  summary: {
+    en: "This is a bill for medical care you received. It shows a balance the hospital says you owe and a date to pay it by. Before you pay, you can ask for an itemized bill and check it against your insurance — billing mistakes are common.",
+    es: "Esta es una factura por atención médica que recibió. Muestra un saldo que el hospital dice que usted debe y una fecha para pagarlo. Antes de pagar, puede pedir una factura detallada y compararla con su seguro — los errores de facturación son comunes.",
+  },
+  pages: [plainPage("Statement of Account", "Balance due · pay-by date")],
+  requirements: [
+    {
+      id: "r_med_eob", order: 1, type: "gather-document", difficulty: "easy", status: "todo",
+      title: { en: "Find your insurance Explanation of Benefits (EOB)", es: "Busque su Explicación de Beneficios (EOB) del seguro" },
+      guidance: { en: "Your insurer sends an EOB showing what they paid and what you really owe. Compare it to this bill — if the numbers don't match, you may owe less.", es: "Su aseguradora envía un EOB que muestra lo que pagó y lo que usted realmente debe. Compárelo con esta factura — si los números no coinciden, podría deber menos." },
+      flags: [{ kind: "tip", label: { en: "An EOB is not a bill — it shows what you truly owe", es: "Un EOB no es una factura — muestra lo que realmente debe" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_med_itemized", order: 2, type: "external-action", difficulty: "medium", status: "todo",
+      title: { en: "Request an itemized bill", es: "Pida una factura detallada" },
+      guidance: { en: "Call the billing number and ask for an itemized statement of every charge. You have the right to one, and it's the best way to catch duplicate or wrong charges before you pay.", es: "Llame al número de facturación y pida un estado detallado de cada cargo. Tiene derecho a uno, y es la mejor forma de detectar cargos duplicados o erróneos antes de pagar." },
+      flags: [{ kind: "tip", label: { en: "Ask about financial assistance / charity care", es: "Pregunte por asistencia financiera / atención caritativa" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_med_account", order: 3, type: "fill-field", difficulty: "easy", status: "todo",
+      title: { en: "Confirm your account number and the amount due", es: "Confirme su número de cuenta y el monto adeudado" },
+      guidance: { en: "Write the account number from the top of the bill and the balance they're asking for. Double-check the amount against your EOB before sending any money.", es: "Escriba el número de cuenta de la parte superior de la factura y el saldo que piden. Verifique el monto con su EOB antes de enviar dinero." },
+      flags: [],
+      fields: [
+        { id: "f_med_acct", name: "account_number", kind: "text", label: { en: "Account number", es: "Número de cuenta" }, rect: billAcctRect, value: null, required: true },
+        { id: "f_med_amt", name: "amount_due", kind: "number", label: { en: "Amount due", es: "Monto adeudado" }, rect: billAmtRect, value: null, required: true, placeholder: "$0.00" },
+      ],
+      spotlight: boxOf([billAcctRect, billAmtRect]),
+    },
+    {
+      id: "r_med_pay", order: 4, type: "pay-fee", difficulty: "hard", status: "todo",
+      title: { en: "Pay or set up a payment plan by the due date", es: "Pague o establezca un plan de pago antes de la fecha límite" },
+      guidance: { en: "If the bill is correct, pay by the due date or ask for a no-interest payment plan — most hospitals offer one. Don't ignore it: unpaid medical bills can go to collections and hurt your credit.", es: "Si la factura es correcta, pague antes de la fecha límite o pida un plan de pago sin intereses — la mayoría de los hospitales ofrecen uno. No la ignore: las facturas médicas impagas pueden ir a cobranzas y dañar su crédito." },
+      flags: [
+        { kind: "fee", label: { en: "Balance due — verify before paying", es: "Saldo adeudado — verifique antes de pagar" } },
+        { kind: "deadline", label: { en: "Pay by Jul 15, 2026", es: "Pague antes del 15 de jul, 2026" }, date: "2026-07-15" },
+      ],
+      fields: [], spotlight: null,
+    },
+  ],
+  topFlags: [
+    { kind: "deadline", label: { en: "Pay by Jul 15, 2026", es: "Pague antes del 15 de jul, 2026" }, date: "2026-07-15" },
+    { kind: "fee", label: { en: "Balance the hospital says you owe", es: "Saldo que el hospital dice que debe" } },
+    { kind: "tip", label: { en: "Ask for an itemized bill + financial aid", es: "Pida una factura detallada + ayuda financiera" } },
+  ],
+};
+
+// ---- Court summons — a HARD respond-by deadline, default-judgment legal risk ----
+const courtCaseRect: Rect = { page: 0, x: 0.06, y: 0.2, w: 0.3, h: 0.03 };
+const courtRespRect: Rect = { page: 0, x: 0.06, y: 0.27, w: 0.6, h: 0.05 };
+export const MOCK_COURT: DocumentModel = {
+  id: "mock_court",
+  fileName: "Court-Summons.pdf",
+  docType: { en: "Court summons (civil complaint)", es: "Citación judicial (demanda civil)" },
+  summary: {
+    en: "Someone has filed a case against you in court, and this paper orders you to respond. You usually have a short window to file a written answer — if you miss it, the court can rule against you automatically (a default judgment). Free legal help is often available, so act fast.",
+    es: "Alguien presentó un caso en su contra en la corte, y este documento le ordena responder. Normalmente tiene poco tiempo para presentar una respuesta por escrito — si lo pierde, la corte puede fallar en su contra automáticamente (un fallo en rebeldía). A menudo hay ayuda legal gratuita, así que actúe rápido.",
+  },
+  pages: [plainPage("Summons", "You must respond by the deadline")],
+  requirements: [
+    {
+      id: "r_court_deadline", order: 1, type: "external-action", difficulty: "hard", status: "todo",
+      title: { en: "Note your response deadline now", es: "Anote ahora su fecha límite para responder" },
+      guidance: { en: "Find the number of days you have to respond (often 20–30 from the date you were served) and mark the exact date. Missing it is the single biggest risk here — the other side can win without you.", es: "Busque cuántos días tiene para responder (a menudo 20–30 desde que le entregaron los papeles) y marque la fecha exacta. Perderla es el mayor riesgo aquí — la otra parte puede ganar sin usted." },
+      flags: [{ kind: "deadline", label: { en: "Respond by Jun 25, 2026", es: "Responda antes del 25 de jun, 2026" }, date: "2026-06-25" }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_court_help", order: 2, type: "external-action", difficulty: "medium", status: "todo",
+      title: { en: "Get free legal help (self-help center / legal aid)", es: "Obtenga ayuda legal gratuita (centro de autoayuda / asistencia legal)" },
+      guidance: { en: "Most courthouses have a free self-help center, and legal aid may take your case at no cost. They can tell you how to answer correctly — don't try to guess the legal wording alone.", es: "La mayoría de las cortes tienen un centro de autoayuda gratuito, y la asistencia legal puede tomar su caso sin costo. Ellos le dirán cómo responder correctamente — no intente adivinar el lenguaje legal solo." },
+      flags: [{ kind: "tip", label: { en: "Free help — use it before the deadline", es: "Ayuda gratuita — úsela antes de la fecha límite" } }],
+      fields: [], spotlight: null,
+    },
+    {
+      id: "r_court_answer", order: 3, type: "fill-field", difficulty: "hard", status: "todo",
+      title: { en: "Write your response (the Answer)", es: "Escriba su respuesta (la Contestación)" },
+      guidance: { en: "Put the case number exactly as printed, then respond to each claim — admit, deny, or say you don't know. Keep a copy. The self-help center can review it before you file.", es: "Ponga el número de caso exactamente como está impreso, luego responda a cada reclamo — admita, niegue, o diga que no sabe. Guarde una copia. El centro de autoayuda puede revisarla antes de presentarla." },
+      flags: [],
+      fields: [
+        { id: "f_court_case", name: "case_number", kind: "text", label: { en: "Case number", es: "Número de caso" }, rect: courtCaseRect, value: null, required: true },
+        { id: "f_court_resp", name: "your_response", kind: "text", label: { en: "Your written answer", es: "Su respuesta escrita" }, rect: courtRespRect, value: null, required: true },
+      ],
+      spotlight: boxOf([courtCaseRect, courtRespRect]),
+    },
+    {
+      id: "r_court_sign", order: 4, type: "sign", difficulty: "medium", status: "todo",
+      title: { en: "Sign and file your response with the court", es: "Firme y presente su respuesta ante la corte" },
+      guidance: { en: "Sign the answer, file it with the court clerk before the deadline, and mail a copy to the other side. Filing may have a fee, but you can ask for a fee waiver if you can't afford it.", es: "Firme la contestación, preséntela ante el secretario de la corte antes de la fecha límite, y envíe una copia a la otra parte. La presentación puede tener un costo, pero puede pedir una exención si no puede pagarla." },
+      flags: [{ kind: "legal-risk", label: { en: "Miss the deadline → default judgment against you", es: "Pierda la fecha → fallo en rebeldía en su contra" } }],
+      fields: [], spotlight: null,
+    },
+  ],
+  topFlags: [
+    { kind: "deadline", label: { en: "Respond by Jun 25, 2026", es: "Responda antes del 25 de jun, 2026" }, date: "2026-06-25" },
+    { kind: "legal-risk", label: { en: "No response = automatic loss (default judgment)", es: "Sin respuesta = pérdida automática (fallo en rebeldía)" } },
+    { kind: "tip", label: { en: "Free self-help / legal aid is available", es: "Hay autoayuda / asistencia legal gratuita" } },
+  ],
+};
+
 // Convenience map so the UI and the eval can iterate every doc class.
 export const MOCK_VARIANTS: Record<string, DocumentModel> = {
   sba: MOCK_SBA,
   lease: MOCK_LEASE,
   benefits: MOCK_BENEFITS,
   uscis: MOCK_USCIS,
+  medical: MOCK_MEDICAL,
+  court: MOCK_COURT,
 };

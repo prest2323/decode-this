@@ -1,298 +1,60 @@
 // EXTRACT — owned by Michael (backend, heavy track). Turns an uploaded document
 // into a DocumentModel. Gemini (default) / Anthropic (fallback) read the file
-// multimodally and return JSON; normalizeDoc() is the trust boundary every reply
-// passes through. With no key — or on ANY failure — we return the SBA mock, so
-// the demo can never hang on the network.
+// multimodally and return JSON; the SHARED normalizeDoc() in lib/ai.ts is the
+// single trust boundary every reply passes through (clamps rects, fills es,
+// derives the grouped spotlight, guarantees one active step). With no key — or on
+// ANY failure — we return the SBA mock, so the demo can never hang on the network.
+//
+// THE IMPRESSIVE WIN — REAL FIELD COORDINATES: when the upload is an AcroForm PDF
+// we read each form field's real widget rectangle with pdf-lib, normalize it to
+// [0..1] top-left, (a) feed the field inventory to the model so it reuses the REAL
+// field names, then (b) stamp those real rects back onto the model's fields. The
+// grouped spotlight then lands on the actual boxes of a real uploaded form, not
+// just the mock. Falls back gracefully when a PDF has no AcroForm.
 //
 // NOTE on pages: the model returns docType/summary/topFlags/requirements, NOT the
-// rendered page images. Rects are normalized [0..1] precisely so the canvas can
-// overlay them on whatever it renders from the original upload. Populating
-// DocumentModel.pages for a live PDF (pdfjs render) is the canvas/integration
-// seam (Sawyer/Preston) — flagged, not reached into. The mock ships real pages.
+// rendered page images. Rects are normalized [0..1] so the canvas can overlay them
+// on whatever it renders from the original upload. For an image upload the upload
+// IS the page; PDFs get a placeholder until client-side pdfjs render (Sawyer).
+import type { Schema } from "@google/genai";
+import {
+  PDFDocument,
+  PDFCheckBox,
+  PDFRadioGroup,
+  PDFSignature,
+  PDFDropdown,
+  PDFOptionList,
+  PDFButton,
+} from "pdf-lib";
+import { createHash } from "node:crypto";
 import type {
   AnalyzeRequest,
+  Difficulty,
+  DocPage,
   DocumentModel,
-  Requirement,
   Field,
   Rect,
-  Flag,
-  DocPage,
-  Lang,
-  RequirementType,
-  Difficulty,
-  ReqStatus,
-  FlagKind,
+  Requirement,
 } from "@/lib/types";
+import {
+  provider,
+  geminiClient,
+  anthropicClient,
+  GEMINI_MODEL,
+  ANTHROPIC_MODEL,
+  normalizeDoc,
+} from "@/lib/ai";
 import { MOCK_DOC } from "@/lib/mock";
-import type { Schema } from "@google/genai";
-import { provider, geminiClient, anthropicClient, GEMINI_MODEL, ANTHROPIC_MODEL } from "@/lib/ai";
 import { EXTRACT_SYSTEM, extractSchema } from "@/lib/prompt";
 
-// ---------- coercion primitives ----------
-type Dict = Record<string, unknown>;
-
-const asObj = (v: unknown): Dict =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Dict) : {};
-const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-
-const str = (v: unknown, fallback = ""): string =>
-  typeof v === "string"
-    ? v
-    : typeof v === "number" || typeof v === "boolean"
-      ? String(v)
-      : fallback;
-
-const clamp01 = (v: unknown): number => {
-  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
-  return Math.min(1, Math.max(0, n));
-};
-
-const int = (v: unknown, fallback = 0): number => {
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
-};
-
-const oneOf = <T extends string>(
-  v: unknown,
-  allowed: readonly T[],
-  fallback: T,
-): T => (typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : fallback);
-
-/** Coerce to a complete {en,es}; fill es from en (or en from es) when one is missing. */
-function bilingual(v: unknown): Record<Lang, string> {
-  if (typeof v === "string") return { en: v, es: v };
-  const o = asObj(v);
-  const en = typeof o.en === "string" ? o.en : typeof o.es === "string" ? o.es : "";
-  const es = typeof o.es === "string" ? o.es : en;
-  return { en, es: es || en };
+interface ParsedFile {
+  mimeType: string;
+  data: string; // base64 (binary) or raw text
+  isText: boolean;
 }
-
-// ---------- contract unions ----------
-const FIELD_KINDS = ["text", "number", "date", "checkbox", "radio", "signature"] as const;
-const REQ_TYPES: readonly RequirementType[] = ["fill-field", "gather-document", "external-action", "sign", "pay-fee"];
-const DIFFS: readonly Difficulty[] = ["easy", "medium", "hard"];
-const STATUSES: readonly ReqStatus[] = ["todo", "active", "done"];
-const FLAG_KINDS: readonly FlagKind[] = ["deadline", "fee", "background-check", "legal-risk", "scam", "tip"];
-
-function rect(v: unknown): Rect {
-  const o = asObj(v);
-  return { page: Math.max(0, int(o.page, 0)), x: clamp01(o.x), y: clamp01(o.y), w: clamp01(o.w), h: clamp01(o.h) };
-}
-
-function flag(v: unknown): Flag {
-  const o = asObj(v);
-  const f: Flag = { kind: oneOf(o.kind, FLAG_KINDS, "tip"), label: bilingual(o.label) };
-  if (typeof o.date === "string") f.date = o.date;
-  else if (o.date === null) f.date = null;
-  return f;
-}
-
-function fieldValue(v: unknown): string | boolean | null {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  return null;
-}
-
-function field(v: unknown, idx: number, seen: Set<string>): Field {
-  const o = asObj(v);
-  let id = str(o.id) || `fld_${idx}`;
-  while (seen.has(id)) id = `${id}_${idx}`;
-  seen.add(id);
-  const f: Field = {
-    id,
-    name: str(o.name) || id,
-    kind: oneOf(o.kind, FIELD_KINDS, "text"),
-    label: bilingual(o.label),
-    rect: rect(o.rect),
-    value: fieldValue(o.value),
-    required: o.required === true,
-  };
-  if (Array.isArray(o.options)) f.options = o.options.map((x) => str(x)).filter(Boolean);
-  if (typeof o.placeholder === "string") f.placeholder = o.placeholder;
-  return f;
-}
-
-// Padded bounding box of a group of fields = the grouped spotlight. Same padding
-// as lib/mock.ts so routing the mock through normalizeDoc reproduces it exactly.
-const SPOTLIGHT_PAD = 0.012;
-function bboxOf(fields: Field[]): Rect | null {
-  if (!fields.length) return null;
-  const page = fields[0].rect.page;
-  const same = fields.filter((f) => f.rect.page === page);
-  const minX = Math.min(...same.map((f) => f.rect.x));
-  const minY = Math.min(...same.map((f) => f.rect.y));
-  const maxX = Math.max(...same.map((f) => f.rect.x + f.rect.w));
-  const maxY = Math.max(...same.map((f) => f.rect.y + f.rect.h));
-  return {
-    page,
-    x: Math.max(0, minX - SPOTLIGHT_PAD),
-    y: Math.max(0, minY - SPOTLIGHT_PAD),
-    w: Math.min(1, maxX - minX + SPOTLIGHT_PAD * 2),
-    h: Math.min(1, maxY - minY + SPOTLIGHT_PAD * 2),
-  };
-}
-
-function requirement(
-  v: unknown,
-  idx: number,
-  seenReq: Set<string>,
-  seenField: Set<string>,
-): Requirement {
-  const o = asObj(v);
-  let id = str(o.id) || `r_${idx}`;
-  while (seenReq.has(id)) id = `${id}_${idx}`;
-  seenReq.add(id);
-
-  const fields = asArr(o.fields).map((fv, i) => field(fv, idx * 100 + i, seenField));
-  // Repair an unknown/missing type by inference: fields present → on-page fill.
-  const inferredType: RequirementType = fields.length > 0 ? "fill-field" : "gather-document";
-  const type = oneOf(o.type, REQ_TYPES, inferredType);
-  // Re-derive the spotlight so grouping is always consistent: fill-field steps
-  // spotlight the bbox of their fields; everything else lives off-page (null).
-  const spotlight = type === "fill-field" ? bboxOf(fields) : null;
-
-  return {
-    id,
-    order: int(o.order, idx),
-    type,
-    difficulty: oneOf(o.difficulty, DIFFS, "medium"),
-    status: oneOf(o.status, STATUSES, "todo"),
-    title: bilingual(o.title),
-    guidance: bilingual(o.guidance),
-    flags: asArr(o.flags).map(flag),
-    fields,
-    spotlight,
-  };
-}
-
-function docPage(v: unknown, idx: number): DocPage {
-  const o = asObj(v);
-  return {
-    index: int(o.index, idx),
-    image: str(o.image),
-    width: int(o.width, 850) || 850,
-    height: int(o.height, 1100) || 1100,
-  };
-}
-
-// ---------- grouping + difficulty + ordering (runs inside normalizeDoc) ----------
-const DIFF_RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
-const RANK_DIFF: Difficulty[] = ["easy", "medium", "hard"];
-const maxDiff = (...ds: Difficulty[]): Difficulty => RANK_DIFF[Math.max(...ds.map((d) => DIFF_RANK[d]))];
-
-/** Which logical unit a field belongs to, for safety-net grouping. */
-function unitOf(f: Field): "address" | "name" | null {
-  const s = `${f.name} ${f.label.en} ${f.label.es}`.toLowerCase();
-  if (/street|address|addr|\bcity\b|\bstate\b|\bzip\b|postal|\bapt\b|suite|calle|ciudad|estado|direcci/.test(s)) return "address";
-  if (/first.?name|last.?name|middle.?name|full.?name|apellido|nombre/.test(s)) return "name";
-  return null;
-}
-
-/** A fill-field requirement's unit, only when ALL its classified fields agree. */
-function reqUnit(r: Requirement): "address" | "name" | null {
-  if (r.type !== "fill-field" || !r.fields.length) return null;
-  const set = new Set(r.fields.map(unitOf).filter(Boolean) as ("address" | "name")[]);
-  return set.size === 1 ? [...set][0] : null;
-}
-
-/** Difficulty = the hardest of: model-provided, the type baseline, and flag severity. */
-function scoreDifficulty(r: Requirement): Difficulty {
-  const typeBase: Difficulty = r.type === "fill-field" ? "easy" : "medium";
-  const hasHeavy = r.flags.some((f) => f.kind === "legal-risk" || f.kind === "background-check");
-  const hasMed = r.flags.some((f) => f.kind === "fee" || f.kind === "deadline");
-  const flagBase: Difficulty = hasHeavy ? "hard" : hasMed ? "medium" : "easy";
-  return maxDiff(r.difficulty, typeBase, flagBase);
-}
-
-/** Tour phase: prerequisites (0) → on-page fills (1) → commit/pay (2). */
-function phaseOf(t: RequirementType): number {
-  if (t === "gather-document" || t === "external-action") return 0;
-  if (t === "fill-field") return 1;
-  return 2; // sign, pay-fee
-}
-
-/**
- * (a) Merge consecutive same-unit fill-field requirements (an address or name
- *     split across separate requirements) into ONE, with ONE re-derived spotlight
- *     — a safety net for when the model fails to group. (b) Re-score difficulty.
- *     (c) Order the tour: prerequisites first, then fills easy→hard / top→bottom,
- *     then pay-fee, with sign always last. Reassign `order` to the final index.
- */
-export function groupAndOrder(reqs: Requirement[]): Requirement[] {
-  // (a) merge
-  const merged: Requirement[] = [];
-  for (const r of reqs) {
-    const prev = merged[merged.length - 1];
-    const u = reqUnit(r);
-    if (
-      prev &&
-      u &&
-      reqUnit(prev) === u &&
-      prev.fields.length > 0 &&
-      r.fields.length > 0 &&
-      prev.fields[0].rect.page === r.fields[0].rect.page
-    ) {
-      const fields = [...prev.fields, ...r.fields];
-      merged[merged.length - 1] = { ...prev, fields, spotlight: bboxOf(fields), flags: [...prev.flags, ...r.flags] };
-    } else {
-      merged.push(r);
-    }
-  }
-
-  // (b) difficulty
-  const scored = merged.map((r) => ({ ...r, difficulty: scoreDifficulty(r) }));
-
-  // (c) order
-  const posOf = (r: Requirement): number => {
-    const rc = r.spotlight ?? r.fields[0]?.rect ?? null;
-    return rc ? rc.page * 10 + rc.y : 0;
-  };
-  const ordered = [...scored].sort((a, b) => {
-    const pa = phaseOf(a.type);
-    const pb = phaseOf(b.type);
-    if (pa !== pb) return pa - pb;
-    // sign always last within its phase
-    const sa = a.type === "sign" ? 1 : 0;
-    const sb = b.type === "sign" ? 1 : 0;
-    if (sa !== sb) return sa - sb;
-    const da = DIFF_RANK[a.difficulty];
-    const db = DIFF_RANK[b.difficulty];
-    if (da !== db) return da - db;
-    const ya = posOf(a);
-    const yb = posOf(b);
-    if (ya !== yb) return ya - yb;
-    return a.order - b.order; // stable final tie-break
-  });
-
-  return ordered.map((r, i) => ({ ...r, order: i + 1 }));
-}
-
-/**
- * The trust boundary. Turn ANY value (a model reply, partial JSON, or the mock)
- * into a valid DocumentModel that the rest of the app can render without guards.
- * Never throws.
- */
-export function normalizeDoc(raw: unknown): DocumentModel {
-  const o = asObj(raw);
-  const seenReq = new Set<string>();
-  const seenField = new Set<string>();
-  const requirements = asArr(o.requirements).map((r, i) => requirement(r, i, seenReq, seenField));
-  return {
-    id: str(o.id) || "doc",
-    fileName: str(o.fileName) || "document",
-    docType: bilingual(o.docType),
-    summary: bilingual(o.summary),
-    pages: asArr(o.pages).map(docPage),
-    requirements: groupAndOrder(requirements),
-    topFlags: asArr(o.topFlags).map(flag),
-  };
-}
-
-// ---------- live extraction ----------
 
 /** Split a base64 data URL into {mimeType, data}; tolerate raw base64 / raw text. */
-function parseFile(req: AnalyzeRequest): { mimeType: string; data: string; isText: boolean } {
+function parseFile(req: AnalyzeRequest): ParsedFile {
   const m = req.file.match(/^data:(.+?);base64,([\s\S]*)$/);
   if (m) return { mimeType: m[1], data: m[2], isText: false };
   if (req.mime && !req.mime.startsWith("text")) {
@@ -300,6 +62,505 @@ function parseFile(req: AnalyzeRequest): { mimeType: string; data: string; isTex
   }
   return { mimeType: req.mime || "text/plain", data: req.file, isText: true };
 }
+
+// ============================================================================
+//  RELIABILITY — timeout + one retry (shared deadline) + identical-doc cache
+// ============================================================================
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Reject if `p` hasn't settled within `ms`. The late settlement of the original
+ *  promise is swallowed (handlers attached) so there's no unhandled rejection. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** Run `fn`, retrying once with backoff on failure, under a TOTAL time budget so
+ *  the route's maxDuration is never blown (a hung first attempt leaves no time
+ *  for a second — we fall through to the mock instead). */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: { tries?: number; totalMs: number; backoffMs?: number; label: string },
+): Promise<T> {
+  const { tries = 2, totalMs, backoffMs = 800, label } = opts;
+  const deadline = Date.now() + totalMs;
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      return await withTimeout(fn(), remaining, label);
+    } catch (e) {
+      lastErr = e;
+      const wait = Math.min(backoffMs * (i + 1), Math.max(0, deadline - Date.now()));
+      if (i < tries - 1 && wait > 0) await sleep(wait);
+    }
+  }
+  throw lastErr ?? new Error(`${label} failed`);
+}
+
+// In-memory cache of identical-doc analyses (per server instance). Keyed by the
+// provider/model + a content hash of the file, so re-uploading the SAME document
+// (or the eval hitting the same sample repeatedly) returns instantly. Only
+// successful REAL analyses are cached — never the mock fallback, so a transient
+// failure doesn't get pinned. Capacity-bounded FIFO; values hold no user input.
+const analysisCache = new Map<string, DocumentModel>();
+const ANALYSIS_CACHE_MAX = 24;
+function analysisKey(file: string, mime: string): string {
+  // Include mime: parseFile()'s text/binary + AcroForm-PDF routing depends on it,
+  // so byte-identical raw content with a different mime must NOT share a result.
+  const hash = createHash("sha256").update(mime || "").update("|").update(file).digest("hex");
+  return `${provider()}|${GEMINI_MODEL}|${ANTHROPIC_MODEL}|${hash}`;
+}
+function cacheGet(key: string): DocumentModel | undefined {
+  return analysisCache.get(key);
+}
+function cacheSet(key: string, model: DocumentModel): void {
+  analysisCache.set(key, model);
+  if (analysisCache.size > ANALYSIS_CACHE_MAX) {
+    const oldest = analysisCache.keys().next().value;
+    if (oldest !== undefined) analysisCache.delete(oldest);
+  }
+}
+
+// ============================================================================
+//  REAL ACROFORM GEOMETRY (pdf-lib) — the signature feature
+// ============================================================================
+
+/** One fillable field discovered in a PDF's AcroForm, with a normalized rect. */
+export interface AcroFieldInfo {
+  name: string;
+  kind: Field["kind"];
+  /** Normalized [0..1], origin top-left, accounting for page rotation. */
+  rect: Rect;
+  required: boolean;
+  options?: string[];
+}
+
+/** Map an AcroForm widget rect (PDF user space, origin bottom-left) to a
+ *  normalized [0..1] top-left rect on the DISPLAYED page, honoring /Rotate and a
+ *  non-zero MediaBox origin (mbX/mbY) — widget /Rect values share the MediaBox's
+ *  absolute user space, so a cropped/imposed form (MediaBox not at 0,0) must be
+ *  translated into box-local space first. Corners are mapped individually then
+ *  min/maxed, so any rotation and any corner ordering produce a positive rect. */
+function widgetRectToNorm(
+  raw: { x: number; y: number; width: number; height: number },
+  pw: number,
+  ph: number,
+  mbX: number,
+  mbY: number,
+  rot: number,
+): Rect | null {
+  if (!(pw > 0) || !(ph > 0)) return null;
+  // translate into MediaBox-local space (mbX=mbY=0 for the common case → no-op)
+  const x0 = raw.x - mbX;
+  const y0 = raw.y - mbY;
+  const x1 = raw.x + raw.width - mbX;
+  const y1 = raw.y + raw.height - mbY;
+  const r = ((rot % 360) + 360) % 360;
+  const map = (X: number, Y: number): { nx: number; ny: number } => {
+    switch (r) {
+      case 90:
+        return { nx: Y / ph, ny: X / pw };
+      case 180:
+        return { nx: (pw - X) / pw, ny: Y / ph };
+      case 270:
+        return { nx: (ph - Y) / ph, ny: (pw - X) / pw };
+      default:
+        return { nx: X / pw, ny: (ph - Y) / ph };
+    }
+  };
+  const a = map(x0, y0);
+  const b = map(x1, y1);
+  const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+  return {
+    page: 0, // set by the caller
+    x: clamp01(Math.min(a.nx, b.nx)),
+    y: clamp01(Math.min(a.ny, b.ny)),
+    w: clamp01(Math.abs(b.nx - a.nx)),
+    h: clamp01(Math.abs(b.ny - a.ny)),
+  };
+}
+
+/** Which page (0-based) a widget annotation lives on. Prefers the /P reference;
+ *  falls back to scanning each page's annotations, then to page 0. */
+function resolvePageIndex(
+  widget: { P?: () => unknown; dict?: unknown },
+  pages: ReturnType<PDFDocument["getPages"]>,
+  ctx: PDFDocument["context"],
+): number {
+  const ref = typeof widget.P === "function" ? widget.P() : undefined;
+  if (ref) {
+    const key = String(ref);
+    const i = pages.findIndex((p) => String(p.ref) === key);
+    if (i >= 0) return i;
+  }
+  const wdict = widget.dict;
+  for (let i = 0; i < pages.length; i++) {
+    let annots: { size?: () => number; get?: (n: number) => unknown } | undefined;
+    try {
+      annots = pages[i].node.Annots() as typeof annots;
+    } catch {
+      annots = undefined;
+    }
+    if (!annots || typeof annots.size !== "function" || typeof annots.get !== "function") continue;
+    for (let j = 0; j < annots.size(); j++) {
+      let resolved: unknown;
+      try {
+        resolved = ctx.lookup(annots.get(j) as never);
+      } catch {
+        resolved = undefined;
+      }
+      if (resolved && resolved === wdict) return i;
+    }
+  }
+  return 0;
+}
+
+function kindOfAcroField(field: unknown): Field["kind"] | null {
+  if (field instanceof PDFCheckBox) return "checkbox";
+  if (field instanceof PDFRadioGroup) return "radio";
+  if (field instanceof PDFSignature) return "signature";
+  if (field instanceof PDFButton) return null; // push buttons aren't inputs — skip
+  return "text"; // text / dropdown / option list — render as text (+ options)
+}
+
+/**
+ * Pull every fillable field's real widget rectangle from a PDF's AcroForm.
+ * Returns [] (never throws) for image uploads, encrypted/garbage PDFs, or PDFs
+ * with no form — the caller then keeps the model's own rects.
+ */
+export async function extractAcroFields(input: Uint8Array | string): Promise<AcroFieldInfo[]> {
+  let bytes: Uint8Array;
+  if (typeof input === "string") {
+    const b64 = input.replace(/^data:.*?;base64,/, "");
+    bytes = Uint8Array.from(Buffer.from(b64, "base64"));
+  } else {
+    bytes = input;
+  }
+  let pdf: PDFDocument;
+  try {
+    pdf = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  } catch {
+    return [];
+  }
+  let fields;
+  try {
+    fields = pdf.getForm().getFields();
+  } catch {
+    return [];
+  }
+  if (!fields.length) return [];
+  const pages = pdf.getPages();
+  if (!pages.length) return [];
+  const ctx = pdf.context;
+  const out: AcroFieldInfo[] = [];
+
+  for (const field of fields) {
+    let name = "";
+    try {
+      name = field.getName() || "";
+    } catch {
+      name = "";
+    }
+    if (!name) continue;
+    const kind = kindOfAcroField(field);
+    if (!kind) continue;
+
+    let options: string[] | undefined;
+    if (field instanceof PDFRadioGroup || field instanceof PDFDropdown || field instanceof PDFOptionList) {
+      try {
+        const o = field.getOptions();
+        if (Array.isArray(o) && o.length) options = o.map(String);
+      } catch {
+        /* ignore */
+      }
+    }
+    let required = false;
+    try {
+      required = field.isRequired();
+    } catch {
+      required = false;
+    }
+
+    let widgets: ReturnType<typeof field.acroField.getWidgets>;
+    try {
+      widgets = field.acroField.getWidgets();
+    } catch {
+      widgets = [];
+    }
+    for (const w of widgets) {
+      let raw: { x: number; y: number; width: number; height: number };
+      try {
+        raw = w.getRectangle();
+      } catch {
+        continue;
+      }
+      const pageIndex = resolvePageIndex(
+        w as unknown as { P?: () => unknown; dict?: unknown },
+        pages,
+        ctx,
+      );
+      const page = pages[pageIndex];
+      const mb = page.getMediaBox();
+      const rot = page.getRotation().angle || 0;
+      const rect = widgetRectToNorm(raw, mb.width, mb.height, mb.x, mb.y, rot);
+      if (!rect) continue;
+      if (rect.w <= 0 || rect.h <= 0) continue; // hidden / zero-size widget
+      rect.page = pageIndex;
+      out.push({ name, kind, rect, required, options });
+    }
+  }
+  return out;
+}
+
+const normName = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/** Compact, capped text block listing the real form fields so the model reuses
+ *  the EXACT AcroForm names (→ a perfect name-join in attachRealRects). */
+function acroInventoryHint(acro: AcroFieldInfo[]): string {
+  if (!acro.length) return "";
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const f of acro) {
+    if (seen.has(f.name)) continue;
+    seen.add(f.name);
+    lines.push(
+      `- "${f.name}" (${f.kind}) on page ${f.rect.page} near [x=${f.rect.x.toFixed(2)}, y=${f.rect.y.toFixed(2)}]`,
+    );
+    if (lines.length >= 80) break;
+  }
+  return (
+    `\n\nFORM FIELD INVENTORY — these are the document's REAL fillable fields, extracted from its AcroForm. ` +
+    `For every "fill-field" requirement, set each Field.name to the EXACT name shown here (copy it verbatim) so the app can map your output onto the real page. ` +
+    `Still group related fields (e.g. all the address parts) into ONE requirement as instructed; you do not need to be precise about rects — the app uses these real coordinates.\n` +
+    lines.join("\n")
+  );
+}
+
+/** Padded bounding box of a set of field rects on their shared page = the
+ *  grouped spotlight. Mirrors lib/ai + lib/mock padding so grouping is uniform. */
+const SPOTLIGHT_PAD = 0.012;
+function bboxOf(fields: Field[]): Rect | null {
+  if (!fields.length) return null;
+  const page = fields[0].rect.page;
+  const same = fields.filter((f) => f.rect.page === page);
+  if (!same.length) return null;
+  const minX = Math.min(...same.map((f) => f.rect.x));
+  const minY = Math.min(...same.map((f) => f.rect.y));
+  const maxX = Math.max(...same.map((f) => f.rect.x + f.rect.w));
+  const maxY = Math.max(...same.map((f) => f.rect.y + f.rect.h));
+  const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+  return {
+    page,
+    x: clamp01(minX - SPOTLIGHT_PAD),
+    y: clamp01(minY - SPOTLIGHT_PAD),
+    w: clamp01(maxX - minX + SPOTLIGHT_PAD * 2),
+    h: clamp01(maxY - minY + SPOTLIGHT_PAD * 2),
+  };
+}
+
+/**
+ * Stamp the REAL AcroForm widget rects onto the model's fields by name (exact,
+ * then normalized). Also corrects each matched field's kind to the widget's true
+ * type and re-derives every fill-field spotlight from the real geometry.
+ */
+export function attachRealRects(model: DocumentModel, acro: AcroFieldInfo[]): DocumentModel {
+  if (!acro.length) return model;
+  // A field can have multiple widgets sharing ONE name (a radio group's option
+  // buttons, or a field repeated across pages). Union them into one rect on the
+  // first widget's page so a radio cluster's spotlight covers the whole group
+  // instead of collapsing to the first button. Single-widget fields are unchanged.
+  const groups = new Map<string, AcroFieldInfo[]>();
+  for (const f of acro) {
+    const arr = groups.get(f.name);
+    if (arr) arr.push(f);
+    else groups.set(f.name, [f]);
+  }
+  const unionInfo = (arr: AcroFieldInfo[]): AcroFieldInfo => {
+    if (arr.length === 1) return arr[0];
+    const page = arr[0].rect.page;
+    const same = arr.filter((f) => f.rect.page === page);
+    const minX = Math.min(...same.map((f) => f.rect.x));
+    const minY = Math.min(...same.map((f) => f.rect.y));
+    const maxX = Math.max(...same.map((f) => f.rect.x + f.rect.w));
+    const maxY = Math.max(...same.map((f) => f.rect.y + f.rect.h));
+    const c = (n: number) => Math.max(0, Math.min(1, n));
+    return { ...arr[0], rect: { page, x: c(minX), y: c(minY), w: c(maxX - minX), h: c(maxY - minY) } };
+  };
+  const byExact = new Map<string, AcroFieldInfo>();
+  const byNorm = new Map<string, AcroFieldInfo>();
+  for (const [name, arr] of groups) {
+    const info = unionInfo(arr);
+    byExact.set(name, info);
+    const nk = normName(name);
+    if (nk && !byNorm.has(nk)) byNorm.set(nk, info);
+  }
+  let matched = 0;
+  const requirements = model.requirements.map((r) => {
+    if (r.type !== "fill-field" || !r.fields.length) return r;
+    const fields = r.fields.map((field) => {
+      const hit = byExact.get(field.name) ?? byNorm.get(normName(field.name));
+      if (!hit) return field;
+      matched++;
+      return { ...field, rect: { ...hit.rect }, kind: hit.kind, options: hit.options ?? field.options };
+    });
+    return { ...r, fields, spotlight: bboxOf(fields) ?? r.spotlight };
+  });
+  // Coverage is useful signal but must never leak field VALUES — names only.
+  console.log(`acroform: matched ${matched} model field(s) to real widget rects (of ${acro.length} form fields)`);
+  return { ...model, requirements };
+}
+
+// ============================================================================
+//  GROUPING + DIFFICULTY + ORDER (restores the task-5 pass that the
+//  shared-normalizer dedup dropped; runs AFTER normalizeDoc on live output only)
+// ============================================================================
+
+const ADDR_TOKEN = /addr|street|\bcity\b|\bstate\b|\bzip\b|postal|calle|ciudad|estado|c[oó]digo|direcci/i;
+const NAMEPART_TOKEN = /(first|last|middle|given|family)[_\s-]*name|name[_\s-]*(first|last|middle)|primer.*nombre|apellido/i;
+
+function fieldText(f: Field): string {
+  return `${f.name} ${f.label.en} ${f.label.es}`;
+}
+/** A requirement is "address-class" when EVERY field looks like an address part. */
+function isAddressClass(r: Requirement): boolean {
+  return r.type === "fill-field" && r.fields.length > 0 && r.fields.every((f) => ADDR_TOKEN.test(fieldText(f)));
+}
+function isNamePartClass(r: Requirement): boolean {
+  return r.type === "fill-field" && r.fields.length > 0 && r.fields.every((f) => NAMEPART_TOKEN.test(fieldText(f)));
+}
+function reqPage(r: Requirement): number {
+  return r.fields[0]?.rect.page ?? r.spotlight?.page ?? 0;
+}
+/** Vertical gap between two stacked fill-field blocks (normalized). A large gap
+ *  ⇒ genuinely different blocks ⇒ don't merge. */
+function verticalGap(a: Requirement, b: Requirement): number {
+  const ab = bboxOf(a.fields);
+  const bb = bboxOf(b.fields);
+  if (!ab || !bb) return 1;
+  return Math.max(bb.y - (ab.y + ab.h), ab.y - (bb.y + bb.h));
+}
+/** Horizontal overlap of two blocks as a fraction of the narrower block. Low
+ *  overlap ⇒ they're side-by-side (two columns) ⇒ distinct blocks, don't merge. */
+function horizontalOverlapRatio(a: Requirement, b: Requirement): number {
+  const ab = bboxOf(a.fields);
+  const bb = bboxOf(b.fields);
+  if (!ab || !bb) return 0;
+  const overlap = Math.max(0, Math.min(ab.x + ab.w, bb.x + bb.w) - Math.max(ab.x, bb.x));
+  const minW = Math.min(ab.w, bb.w);
+  return minW > 0 ? overlap / minW : 0;
+}
+
+/**
+ * (a) Safety-net merge: collapse CONSECUTIVE same-unit fill-fields (an address
+ * block, or a split first/last name) the model failed to group — but only when
+ * they sit on the same page and are vertically adjacent, so two distinct address
+ * blocks never merge. Idempotent on an already-grouped doc (e.g. the SBA mock).
+ */
+function mergeAdjacent(reqs: Requirement[]): Requirement[] {
+  const out: Requirement[] = [];
+  for (const r of reqs) {
+    const prev = out[out.length - 1];
+    const sameClass =
+      prev &&
+      reqPage(prev) === reqPage(r) &&
+      ((isAddressClass(prev) && isAddressClass(r)) || (isNamePartClass(prev) && isNamePartClass(r))) &&
+      // vertically adjacent AND horizontally aligned — a single stacked block, not
+      // two side-by-side columns (which a vertical-only test would wrongly merge).
+      verticalGap(prev, r) < 0.08 &&
+      horizontalOverlapRatio(prev, r) > 0.5;
+    if (sameClass) {
+      const fields = [...prev.fields, ...r.fields];
+      out[out.length - 1] = {
+        ...prev,
+        fields,
+        flags: [...prev.flags, ...r.flags],
+        spotlight: bboxOf(fields),
+      };
+    } else {
+      out.push(r);
+    }
+  }
+  return out;
+}
+
+const DIFF_RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+const RANK_DIFF: Difficulty[] = ["easy", "medium", "hard"];
+function maxDiff(a: Difficulty, b: Difficulty): Difficulty {
+  return RANK_DIFF[Math.max(DIFF_RANK[a], DIFF_RANK[b])];
+}
+function typeBaseline(r: Requirement): Difficulty {
+  switch (r.type) {
+    case "pay-fee":
+      return "hard";
+    case "gather-document":
+    case "external-action":
+    case "sign":
+      return "medium";
+    default: {
+      // fill-field: a lone simple text box is easy; signatures / many inputs skew up.
+      const heavy = r.fields.some((f) => f.kind === "signature");
+      return heavy || r.fields.length >= 4 ? "medium" : "easy";
+    }
+  }
+}
+function flagSeverity(r: Requirement): Difficulty {
+  let d: Difficulty = "easy";
+  for (const f of r.flags) {
+    if (f.kind === "legal-risk" || f.kind === "background-check" || f.kind === "scam") d = maxDiff(d, "hard");
+    else if (f.kind === "deadline" || f.kind === "fee") d = maxDiff(d, "medium");
+  }
+  return d;
+}
+function scoreDifficulty(r: Requirement): Difficulty {
+  return maxDiff(maxDiff(r.difficulty, typeBaseline(r)), flagSeverity(r));
+}
+
+// Tour rank: prerequisites first, then on-page fills, then pay, then sign last.
+const TYPE_RANK: Record<Requirement["type"], number> = {
+  "gather-document": 0,
+  "external-action": 1,
+  "fill-field": 2,
+  "pay-fee": 3,
+  sign: 4,
+};
+
+/**
+ * The full grouping/difficulty/order pass, applied to LIVE model output after
+ * the shared normalizeDoc. Merges adjacent same-unit fill-fields, scores
+ * difficulty (max of model / type-baseline / flag-severity), and orders the tour
+ * prerequisites → fills (easy→hard, top→bottom) → pay → sign, reassigning `order`
+ * and putting the first step active.
+ */
+export function groupAndOrder(input: Requirement[]): Requirement[] {
+  const merged = mergeAdjacent(input).map((r) => ({ ...r, difficulty: scoreDifficulty(r) }));
+  const sorted = merged.slice().sort((a, b) => {
+    if (TYPE_RANK[a.type] !== TYPE_RANK[b.type]) return TYPE_RANK[a.type] - TYPE_RANK[b.type];
+    if (DIFF_RANK[a.difficulty] !== DIFF_RANK[b.difficulty]) return DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty];
+    const ay = a.spotlight?.y ?? 1;
+    const by = b.spotlight?.y ?? 1;
+    if (ay !== by) return ay - by;
+    return (a.spotlight?.x ?? 1) - (b.spotlight?.x ?? 1);
+  });
+  return sorted.map((r, i) => ({ ...r, order: i + 1, status: i === 0 ? "active" : "todo" }));
+}
+
+// ============================================================================
+//  PROVIDER CALLS
+// ============================================================================
 
 /** Recursively lowercase every `type` so the Gemini (Type-enum) schema becomes a
  *  plain JSON Schema for Anthropic's tool input_schema. */
@@ -315,11 +576,11 @@ function toJsonSchema(node: unknown): unknown {
   return node;
 }
 
-async function extractWithGemini(req: AnalyzeRequest): Promise<unknown> {
-  const { mimeType, data, isText } = parseFile(req);
+async function extractWithGemini(parsed: ParsedFile, systemText: string): Promise<unknown> {
+  const { mimeType, data, isText } = parsed;
   const parts = isText
-    ? [{ text: EXTRACT_SYSTEM }, { text: data }]
-    : [{ text: EXTRACT_SYSTEM }, { inlineData: { mimeType, data } }];
+    ? [{ text: systemText }, { text: data }]
+    : [{ text: systemText }, { inlineData: { mimeType, data } }];
   const res = await geminiClient().models.generateContent({
     model: GEMINI_MODEL,
     contents: [{ role: "user", parts }],
@@ -327,13 +588,14 @@ async function extractWithGemini(req: AnalyzeRequest): Promise<unknown> {
       responseMimeType: "application/json",
       // extractSchema is hand-built with the Type enum; cast to the SDK's Schema.
       responseSchema: extractSchema as unknown as Schema,
+      temperature: 0.1,
     },
   });
   return JSON.parse(res.text ?? "{}");
 }
 
-async function extractWithAnthropic(req: AnalyzeRequest): Promise<unknown> {
-  const { mimeType, data, isText } = parseFile(req);
+async function extractWithAnthropic(parsed: ParsedFile, systemText: string): Promise<unknown> {
+  const { mimeType, data, isText } = parsed;
   const client = anthropicClient();
   const fileBlock = isText
     ? { type: "text" as const, text: `Document text:\n"""${data}"""` }
@@ -343,6 +605,7 @@ async function extractWithAnthropic(req: AnalyzeRequest): Promise<unknown> {
   const msg = await client.messages.create({
     model: ANTHROPIC_MODEL,
     max_tokens: 8192,
+    temperature: 0.1,
     tools: [
       {
         name: "emit_document_model",
@@ -351,29 +614,121 @@ async function extractWithAnthropic(req: AnalyzeRequest): Promise<unknown> {
       },
     ],
     tool_choice: { type: "tool", name: "emit_document_model" },
-    // Anthropic content blocks; cast because we mix document/image/text shapes.
-    messages: [{ role: "user", content: [fileBlock, { type: "text", text: EXTRACT_SYSTEM }] as never }],
+    messages: [{ role: "user", content: [fileBlock, { type: "text", text: systemText }] as never }],
   });
   const block = msg.content.find((b) => b.type === "tool_use");
   return block && block.type === "tool_use" ? block.input : {};
 }
 
+// ============================================================================
+//  PAGES — give the canvas something to render (the model returns no images)
+// ============================================================================
+
+// For an IMAGE upload the upload IS the page — attach it with its real pixel size
+// so the aspect ratio (and the normalized overlays) line up. PDFs need client-side
+// pdfjs (Sawyer); until then a neutral placeholder keeps the canvas from crashing
+// on an empty pages[].
+const PLACEHOLDER_PAGE =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="850" height="1100"><rect width="850" height="1100" fill="#f1f5f9"/><text x="425" y="545" font-family="Arial, sans-serif" font-size="22" fill="#64748b" text-anchor="middle">Document preview unavailable — fields below</text></svg>',
+  );
+
+/** Read pixel dimensions straight from a base64 PNG/JPEG header (no decoding). */
+function imageDims(mimeType: string, base64: string): { width: number; height: number } {
+  const def = { width: 850, height: 1100 };
+  try {
+    const buf = Buffer.from(base64, "base64");
+    if (mimeType.includes("png") && buf.length > 24) {
+      return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+    }
+    if (mimeType.includes("jpeg") || mimeType.includes("jpg")) {
+      let o = 2;
+      while (o + 9 < buf.length) {
+        if (buf[o] !== 0xff) {
+          o++;
+          continue;
+        }
+        const marker = buf[o + 1];
+        // Start-of-Frame markers carry the image dimensions.
+        if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+          return { height: buf.readUInt16BE(o + 5), width: buf.readUInt16BE(o + 7) };
+        }
+        o += 2 + buf.readUInt16BE(o + 2);
+      }
+    }
+  } catch {
+    return def;
+  }
+  return def;
+}
+
+/** A page the canvas can render for a live upload (the model doesn't return one). */
+function buildPages(parsed: ParsedFile, file: string): DocPage[] {
+  if (!parsed.isText && parsed.mimeType.startsWith("image/")) {
+    const { width, height } = imageDims(parsed.mimeType, parsed.data);
+    return [{ index: 0, image: file, width, height }];
+  }
+  return [{ index: 0, image: PLACEHOLDER_PAGE, width: 850, height: 1100 }];
+}
+
 /**
- * Analyze an uploaded document into a DocumentModel. Route by provider, run the
- * raw reply through normalizeDoc, and fall back to the SBA mock on anything weird
- * (no key, network error, off-spec reply, or a reply with zero requirements).
+ * Analyze an uploaded document into a DocumentModel:
+ *  1. pull real AcroForm field geometry (PDF only),
+ *  2. ask the model (with the real field inventory) for the Requirement spine,
+ *  3. normalize (shared trust boundary), stamp real rects, group + order,
+ *  4. give the canvas a page to render,
+ *  5. fall back to the SBA mock on anything weird so the demo never dies.
  */
 export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentModel> {
   const fileName = req.fileName || MOCK_DOC.fileName;
-  const fallback = normalizeDoc({ ...MOCK_DOC, fileName });
+  const fallback: DocumentModel = { ...MOCK_DOC, fileName };
   const which = provider();
   if (which === "mock") return fallback;
 
+  // Whole-invocation budget (< the route's maxDuration=60s). The AcroForm parse
+  // below counts against it too, so a slow parse + model call can't run past the
+  // limit and bypass the catch-block mock fallback.
+  const deadline = Date.now() + 50_000;
+
+  // (0) identical-doc cache — re-uploads / repeated eval hits return instantly.
+  const key = analysisKey(req.file, req.mime ?? "");
+  const cached = cacheGet(key);
+  if (cached) return { ...cached, fileName };
+
+  const parsed = parseFile(req);
+
+  // (1) real field coordinates for AcroForm PDFs (best-effort; [] otherwise)
+  let acro: AcroFieldInfo[] = [];
+  if (!parsed.isText && parsed.mimeType === "application/pdf") {
+    try {
+      acro = await extractAcroFields(parsed.data);
+    } catch {
+      acro = [];
+    }
+  }
+  const systemText = EXTRACT_SYSTEM + acroInventoryHint(acro);
+
   try {
-    const raw = which === "gemini" ? await extractWithGemini(req) : await extractWithAnthropic(req);
-    const model = normalizeDoc({ ...asObj(raw), fileName });
+    // (2) model call: one retry with backoff under a shared time budget < the
+    // route's maxDuration, so a hung call falls through to the mock cleanly.
+    const raw = await withRetry(
+      () =>
+        which === "gemini"
+          ? extractWithGemini(parsed, systemText)
+          : extractWithAnthropic(parsed, systemText),
+      { totalMs: Math.max(0, deadline - Date.now()), label: "extract" },
+    );
+    let model = normalizeDoc(raw, fileName);
     // A reply with no requirements is useless on stage — protect the demo.
-    return model.requirements.length > 0 ? model : fallback;
+    if (model.requirements.length === 0) return fallback;
+    // (3) stamp real geometry, then group + order the live spine
+    if (acro.length) model = attachRealRects(model, acro);
+    model = { ...model, requirements: groupAndOrder(model.requirements) };
+    // (4) the model doesn't render pages; give the canvas one so it never crashes.
+    if (model.pages.length === 0) model = { ...model, pages: buildPages(parsed, req.file) };
+    cacheSet(key, model);
+    return model;
   } catch (e) {
     console.error("extract failed, falling back to mock:", e);
     return fallback;
