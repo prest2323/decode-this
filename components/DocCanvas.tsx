@@ -24,6 +24,42 @@ interface PdfRender {
   pages: Record<number, RenderedPage>;
 }
 
+// pdfjs-dist v6 calls Map.prototype.getOrInsertComputed / getOrInsert (the TC39
+// "upsert" proposal) during render — methods browsers don't ship yet, so render
+// throws on PDFs with optional content. Polyfill them (idempotent, non-enumerable
+// like the native methods) before we touch pdfjs.
+function installPdfPolyfills(): void {
+  const proto = Map.prototype as unknown as {
+    getOrInsertComputed?: unknown;
+    getOrInsert?: unknown;
+  };
+  if (typeof proto.getOrInsertComputed !== "function") {
+    Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+      value: function <K, V>(this: Map<K, V>, key: K, compute: (k: K) => V): V {
+        if (this.has(key)) return this.get(key) as V;
+        const v = compute(key);
+        this.set(key, v);
+        return v;
+      },
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+  if (typeof proto.getOrInsert !== "function") {
+    Object.defineProperty(Map.prototype, "getOrInsert", {
+      value: function <K, V>(this: Map<K, V>, key: K, value: V): V {
+        if (this.has(key)) return this.get(key) as V;
+        this.set(key, value);
+        return value;
+      },
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+}
+
 export default function DocCanvas() {
   const { doc, active } = useDoc();
   const [page, setPage] = useState(0);
@@ -43,6 +79,7 @@ export default function DocCanvas() {
     let cancelled = false;
     (async () => {
       try {
+        installPdfPolyfills();
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
