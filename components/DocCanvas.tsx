@@ -75,7 +75,10 @@ export default function DocCanvas() {
   const docId = doc?.id ?? null;
   useEffect(() => {
     const up = getUploadedFile();
-    if (!docId || !up || up.mime !== "application/pdf") return;
+    // Don't paint the uploaded PDF onto the MOCK fallback (id "mock_sba_7a"): its
+    // overlays are the mock's, not this doc's. If live extraction fails (e.g. API
+    // quota), we show the coherent mock instead of the upload with wrong boxes.
+    if (!docId || docId === "mock_sba_7a" || !up || up.mime !== "application/pdf") return;
     let cancelled = false;
     (async () => {
       try {
@@ -129,7 +132,12 @@ export default function DocCanvas() {
   const height = usingPdf ? rp?.height ?? 1100 : fallbackPg?.height ?? 1100;
 
   const fields = doc.requirements.flatMap((r) => r.fields).filter((f) => f.rect.page === idx);
-  const spot = active?.spotlight && active.spotlight.page === idx ? active.spotlight : null;
+  // Per-box spotlight: cut a hole over each active field on this page (not the
+  // group's bounding box, which would also light up the labels between boxes).
+  const holes =
+    active && active.spotlight && active.spotlight.page === idx
+      ? active.fields.filter((f) => f.rect.page === idx).map((f) => f.rect)
+      : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -178,7 +186,7 @@ export default function DocCanvas() {
           {fields.map((f) => (
             <FieldOverlay key={f.id} field={f} />
           ))}
-          <Spotlight rect={spot} />
+          <Spotlight rects={holes} />
           {/* The guide-text card (Aiden's) lives in this same page box so its
               placement aligns with the spotlight and never covers the field. */}
           <GuideBox />
