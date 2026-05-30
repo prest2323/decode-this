@@ -1,11 +1,10 @@
 "use client";
-// DocCanvas — owned by Sawyer (transferred to Michael for the PDF-render job).
-// Renders the active page and stacks the editable field overlays + spotlight on
-// top. For the MOCK it draws page.image (an SVG data URL). For a real uploaded
-// PDF it renders each page with pdfjs-dist to a canvas (worker served from
-// /public) so the crisp real form shows and the NORMALIZED rects overlay it
-// exactly. Pages render progressively — the first appears, the rest fill in. The
-// render is keyed by the doc id, so a stale render is ignored once a new doc loads.
+// DocCanvas — renders the active page + the editable field overlays + spotlight
+// + the focused guide card. For the MOCK it draws page.image (an SVG data URL);
+// for a real uploaded PDF it renders each page with pdfjs-dist to a canvas
+// (worker served from /public) so the crisp real form shows and the NORMALIZED
+// rects overlay it exactly. Pages render progressively; the render is keyed by
+// the doc id so a stale render is ignored once a new doc loads.
 import { useEffect, useState } from "react";
 import { useDoc } from "@/lib/store";
 import FieldOverlay from "@/components/FieldOverlay";
@@ -87,9 +86,9 @@ export default function DocCanvas() {
   const idx = Math.max(0, Math.min(page, pageCount - 1));
   const fallbackPg = doc.pages[idx] ?? doc.pages[0] ?? null;
   const rp = usingPdf ? pdf.pages[idx] : null;
-  const image = usingPdf ? rp?.image ?? "" : fallbackPg?.image ?? "";
-  const width = usingPdf ? rp?.width ?? 850 : fallbackPg?.width ?? 850;
-  const height = usingPdf ? rp?.height ?? 1100 : fallbackPg?.height ?? 1100;
+  const image = usingPdf ? (rp?.image ?? "") : (fallbackPg?.image ?? "");
+  const width = usingPdf ? (rp?.width ?? 850) : (fallbackPg?.width ?? 850);
+  const height = usingPdf ? (rp?.height ?? 1100) : (fallbackPg?.height ?? 1100);
 
   const fields = doc.requirements.flatMap((r) => r.fields).filter((f) => f.rect.page === idx);
   const spot = active?.spotlight && active.spotlight.page === idx ? active.spotlight : null;
@@ -97,23 +96,23 @@ export default function DocCanvas() {
   return (
     <div className="flex h-full flex-col">
       {pageCount > 1 && (
-        <div className="mb-2 flex items-center justify-center gap-3 text-sm text-slate-600">
+        <div className="mb-2 flex items-center justify-center gap-3 text-sm text-ink-soft">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={idx === 0}
-            className="rounded-md border border-slate-300 px-2 py-0.5 disabled:opacity-40"
+            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
           >
             ‹ Prev
           </button>
-          <span>
+          <span className="font-medium text-ink">
             Page {idx + 1} of {pageCount}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
             disabled={idx >= pageCount - 1}
-            className="rounded-md border border-slate-300 px-2 py-0.5 disabled:opacity-40"
+            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
           >
             Next ›
           </button>
@@ -122,7 +121,7 @@ export default function DocCanvas() {
 
       <div className="flex flex-1 items-start justify-center overflow-auto">
         <div
-          className="relative w-full max-w-[640px] rounded-lg border border-slate-300 shadow-sm"
+          className="relative w-full max-w-[640px] rounded-xl border border-line-strong bg-card shadow-soft"
           style={{ aspectRatio: `${width} / ${height}` }}
         >
           {image ? (
@@ -134,7 +133,7 @@ export default function DocCanvas() {
               className="absolute inset-0 h-full w-full select-none rounded-lg"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50 text-sm text-slate-400">
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-paper-2 text-sm text-ink-faint">
               Rendering your document…
             </div>
           )}
@@ -142,8 +141,8 @@ export default function DocCanvas() {
             <FieldOverlay key={f.id} field={f} />
           ))}
           <Spotlight rect={spot} />
-          {/* The guide-text card (Aiden's) lives in this same page box so its
-              placement aligns with the spotlight and never covers the field. */}
+          {/* The guide card lives in this same page box so its placement aligns
+              with the spotlight and never covers the focused field. */}
           <GuideBox />
         </div>
       </div>

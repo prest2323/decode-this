@@ -1,8 +1,7 @@
 "use client";
-// Uploader — owned by Sawyer (transferred to Michael for the PDF-render job).
-// PDF-only: pick/drop a PDF -> stash its bytes for the canvas (pdfjs renders the
-// real page) -> POST /api/analyze -> loadDoc(result). Also a one-click "Try the
-// SBA sample" that loads the mock instantly (network-proof hero on stage).
+// Uploader — PDF-only: pick/drop a PDF -> stash its bytes for the canvas (pdfjs
+// renders the real page) -> POST /api/analyze -> loadDoc(result). Plus a one-click
+// "Try the sample" that loads the SBA mock instantly (network-proof on stage).
 import { useCallback, useRef, useState } from "react";
 import { useDoc } from "@/lib/store";
 import { MOCK_DOC } from "@/lib/mock";
@@ -22,7 +21,7 @@ export default function Uploader() {
   const analyze = useCallback(
     async (file: File) => {
       if (!isPdf(file)) {
-        setError("Please upload a PDF — that's the format we can read and walk you through. (Or try the sample below.)");
+        setError("Please upload a PDF — that's the format we can read and walk you through. Or try the sample below.");
         return;
       }
       setLoading(true);
@@ -68,16 +67,35 @@ export default function Uploader() {
           if (f) analyze(f);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 transition ${
-          drag ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-white hover:border-slate-400"
+        className={`group cursor-pointer rounded-3xl border-2 border-dashed p-12 shadow-soft transition-all duration-300 ${
+          drag
+            ? "border-calm bg-calm-tint scale-[1.01]"
+            : "border-line-strong bg-card hover:border-calm-2 hover:bg-calm-tint/50"
         }`}
       >
-        <div className="text-4xl">📄</div>
-        <p className="mt-3 text-lg font-semibold text-slate-800">
+        <span
+          className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl transition-colors duration-300 ${
+            drag ? "bg-calm text-paper" : "bg-calm-soft text-calm group-hover:bg-calm group-hover:text-paper"
+          }`}
+        >
+          {loading ? (
+            <svg className="h-7 w-7 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 3v5h5" />
+              <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+              <path d="M12 11v6M9 14l3-3 3 3" />
+            </svg>
+          )}
+        </span>
+        <p className="font-display mt-5 text-xl font-semibold text-ink">
           {loading ? "Reading your document…" : "Drop a PDF here"}
         </p>
-        <p className="mt-1 text-sm text-slate-500">
-          We&apos;ll read the real form, break it down, and walk you through every step.
+        <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+          We&apos;ll read the real form, break it down, and walk you through every step — gently.
         </p>
         <input
           ref={inputRef}
@@ -91,7 +109,17 @@ export default function Uploader() {
         />
       </div>
 
-      {error && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-3 rounded-xl border border-alert/30 bg-alert-soft p-3 text-sm text-alert">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-6 flex items-center justify-center gap-3 text-sm text-ink-faint">
+        <span className="h-px w-10 bg-line-strong" />
+        or
+        <span className="h-px w-10 bg-line-strong" />
+      </div>
 
       <button
         type="button"
@@ -100,9 +128,12 @@ export default function Uploader() {
           loadDoc(MOCK_DOC);
         }}
         disabled={loading}
-        className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-calm px-6 py-3 text-sm font-semibold text-paper shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:bg-calm-deep hover:shadow-lift disabled:opacity-50"
       >
-        ✨ Try the sample — an SBA 7(a) loan application
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l1.6 4.8L18 9l-4.4 1.2L12 15l-1.6-4.8L6 9l4.4-1.2z" />
+        </svg>
+        Try a sample — an SBA 7(a) loan application
       </button>
     </div>
   );
