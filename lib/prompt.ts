@@ -54,7 +54,9 @@ FEW-SHOT (illustrative — follow the SHAPE; never copy these facts unless the d
 OTHER DOC CLASSES (same spine; the typical RequirementType mix to look for):
 - Lease / rental agreement: a fill-field (tenant name + rent), a pay-fee (security deposit), a gather-document (proof of income), and a sign step — flag the binding term (legal-risk) and the sign-by date (deadline).
 - Benefits renewal (CalFresh, Medi-Cal): gather-document prerequisites (pay stubs, proof of residence) BEFORE the on-page fields, a fill-field (household + income), often an external-action (phone interview), and a HARD renewal deadline.
-- Immigration form (USCIS, e.g. N-400): a fill-field (legal name + A-Number), a gather-document (green card / travel records), a pay-fee (filing fee), an external-action (biometrics → background-check), and a sign step under penalty of perjury (legal-risk).`;
+- Immigration form (USCIS, e.g. N-400): a fill-field (legal name + A-Number), a gather-document (green card / travel records), a pay-fee (filing fee), an external-action (biometrics → background-check), and a sign step under penalty of perjury (legal-risk).
+- Medical bill / hospital statement: a gather-document (the insurance EOB to compare against), an external-action (call to request an itemized bill / financial assistance), a fill-field (account number + amount due), and a pay-fee — flag the balance (fee), the pay-by date (deadline), and the tip that billing errors are common and an itemized bill / charity care can be requested.
+- Court summons / civil complaint: lead with the HARD respond-by deadline as an external-action (missing it risks a default judgment — legal-risk), an external-action to get free self-help / legal aid, a fill-field (case number + the written answer), and a sign step to file the response. The response deadline is the single most important thing to surface.`;
 
 export const CHAT_SYSTEM = `You are Decode This, helping someone fill out a specific document. Answer ONLY from
 the document context provided plus general, accurate, non-legal guidance. Be calm, concrete, and
