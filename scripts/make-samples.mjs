@@ -58,14 +58,63 @@ async function sbaLikeForm() {
   const sig = form.createTextField("signature");
   sig.addToPage(page, { x: 40, y: H - 700 - 24, width: 260, height: 24, borderWidth: 1, borderColor: rgb(0.6, 0.65, 0.72) });
 
+  // Pin the metadata dates so the bytes are deterministic (no spurious git diffs).
+  const fixed = new Date("2026-01-01T00:00:00Z");
+  pdf.setCreationDate(fixed);
+  pdf.setModificationDate(fixed);
   return pdf.save();
 }
+
+// Plain-text fixtures for the non-form doc classes. The analyzer reads text
+// directly (no AcroForm), so these exercise the extraction/Requirement-spine
+// across classes. All synthetic — no copyrighted forms.
+const TEXT_SAMPLES = {
+  "lease-agreement.txt": `RESIDENTIAL LEASE AGREEMENT
+This Lease is between Landlord (Greenfield Properties) and Tenant.
+Tenant full name: ________________________
+Premises: 412 Oak St, Apt 3, Bakersfield, CA 93301
+Term: 12 months, beginning July 1, 2026.
+Monthly rent: $1,800, due on the 1st of each month. Late fee $75 after the 5th.
+Security deposit: $1,800, refundable, due at signing.
+Tenant must provide proof of income (recent pay stubs) before move-in.
+By signing, Tenant agrees to the full 12-month term and is responsible for rent
+for the entire term even if Tenant moves out early.
+Tenant signature: __________________  Date: __________
+This lease must be signed and returned by June 15, 2026.`,
+
+  "medical-bill.txt": `MERCY GENERAL HOSPITAL — STATEMENT OF ACCOUNT
+Account number: 88-204517
+Service date: 04/12/2026   Patient responsibility after insurance: $1,240.00
+This is not a bill from your insurance. Your plan has processed the claim.
+Amount due: $1,240.00      Please pay by: 07/15/2026
+Questions about your bill? Call Patient Billing at 1-800-555-0199.
+You may request an itemized statement of charges at any time.
+Financial assistance / charity care may be available if you qualify.
+Unpaid balances may be referred to a collection agency after 90 days.`,
+
+  "court-summons.txt": `SUPERIOR COURT OF CALIFORNIA, COUNTY OF KERN
+SUMMONS (CIVIL)   Case Number: BCV-26-104882
+NOTICE TO DEFENDANT: You are being sued.
+Plaintiff: Coastline Credit LLC.
+You have 30 CALENDAR DAYS after this summons is served on you to file a written
+response at this court and have a copy served on the plaintiff. A letter or phone
+call will not protect you.
+If you do not respond on time, you may lose the case by default, and your wages,
+money, and property may be taken without further warning from the court.
+There are free self-help centers and legal aid services. If you cannot pay the
+filing fee, ask the court clerk for a fee waiver.
+You must respond by June 25, 2026.`,
+};
 
 async function main() {
   await mkdir(OUT, { recursive: true });
   const sba = await sbaLikeForm();
   await writeFile(path.join(OUT, "sba-like-acroform.pdf"), sba);
   console.log(`wrote ${OUT}/sba-like-acroform.pdf (${sba.length} bytes)`);
+  for (const [name, body] of Object.entries(TEXT_SAMPLES)) {
+    await writeFile(path.join(OUT, name), body, "utf8");
+    console.log(`wrote ${OUT}/${name} (${body.length} chars)`);
+  }
 }
 
 main().catch((e) => {
