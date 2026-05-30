@@ -17,9 +17,11 @@
   --radius-sm: 0px;
 }
 
+/* 1. Global background and text layout */
 html, body {
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background-color: #1e1e1e !important;
+  background-image: none !important;
+  color: #cccccc !important;
   min-height: 100vh;
 }
 
@@ -29,15 +31,109 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Crisp VS Code Style flat panels */
-.sharp-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+/* 2. Global Dark Panel Overrides */
+section, aside, header, .bg-white, .sharp-card, [class*="bg-white"] {
+  background-color: #252526 !important;
+  border-color: #3c3c3c !important;
+  color: #cccccc !important;
+  border-radius: 2px !important;
 }
 
-.sharp-card-hover:hover {
-  background: var(--color-surface-hover);
-  border-color: #555555;
+/* 3. Text and Headers Color Overrides */
+h1, h2, h3, h4, h5, h6, .text-slate-900, .text-slate-800, [class*="text-slate-900"], [class*="text-slate-850"] {
+  color: #ffffff !important;
+}
+
+p, span, div, .text-slate-650, .text-slate-600, .text-slate-500, [class*="text-slate-600"] {
+  color: #cccccc !important;
+}
+
+.text-slate-400, .text-slate-350, [class*="text-slate-400"] {
+  color: #858585 !important;
+}
+
+/* 4. Global Border Overrides */
+.border-slate-200, .border-slate-300, .border-slate-100, [class*="border-slate-200"], [class*="border-slate-100"] {
+  border-color: #3c3c3c !important;
+}
+
+/* 5. Sleek VS Code Button Overrides */
+button.border-slate-300, button.bg-slate-900, [class*="border-slate-300"], [class*="bg-slate-900"] {
+  border-color: #3c3c3c !important;
+  background-color: #2d2d2d !important;
+  color: #cccccc !important;
+  border-radius: 2px !important;
+}
+
+button.border-slate-300:hover, button.bg-slate-900:hover, [class*="border-slate-300"]:hover {
+  background-color: #3e3e3f !important;
+  border-color: #555555 !important;
+  color: #ffffff !important;
+}
+
+/* 6. List and Checklist Highlights */
+.bg-slate-100, [class*="bg-slate-100"], [class*="hover:bg-slate-50"] {
+  background-color: #2d2d2d !important;
+  border-color: #3c3c3c !important;
+}
+
+.bg-slate-150 {
+  background-color: #2d2d2d !important;
+  color: #858585 !important;
+  border-color: #3c3c3c !important;
+}
+
+.ring-slate-350 {
+  --tw-ring-color: #3c3c3c !important;
+}
+
+/* 7. Input and Dropdown Overrides */
+input, select, textarea {
+  background-color: #2d2d2d !important;
+  border-color: #3c3c3c !important;
+  color: #ffffff !important;
+  border-radius: 2px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #007acc !important;
+  --tw-ring-color: rgba(0, 122, 204, 0.4) !important;
+}
+
+/* 8. Language Selector and Header Action Buttons */
+.inline-flex.rounded-full.border.border-slate-300 {
+  border-radius: 2px !important;
+  border-color: #3c3c3c !important;
+  background-color: #2d2d2d !important;
+}
+
+.inline-flex.rounded-full.border.border-slate-300 button {
+  border-radius: 2px !important;
+  color: #cccccc !important;
+}
+
+.inline-flex.rounded-full.border.border-slate-300 button.bg-slate-900 {
+  background-color: #007acc !important;
+  color: #ffffff !important;
+}
+
+/* Custom premium scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.4);
+  border-radius: 0px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(121, 121, 121, 0.6);
 }
 
 /* VS Code Focus Outlines */
@@ -52,24 +148,6 @@ body {
 
 .animate-pulse-subtle {
   animation: active-pulse 2.5s infinite ease-in-out;
-}
-
-/* Custom premium scrollbar styling */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(121, 121, 121, 0.4);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(121, 121, 121, 0.6);
 }
 
 /* Fade-in animation helper */
