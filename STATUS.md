@@ -29,3 +29,6 @@ _Any change to `lib/types.ts` gets one line here so everyone knows to pull._
 
 ## Done ✅
 - [x] Repo + scaffold + mock app building green
+- [x] Free Gemini backend wired (+ Anthropic fallback) with crash-proof normalization
+- [x] Audit + idea-refinement pass complete (locked design in `docs/DESIGN-LOCKED.md`)
+- [x] **Demo-winning baseline built on mock data** — both flows work end-to-end, dark-mode bug fixed, deadline shown as a live countdown, bilingual ready-to-send reply, audience chips, scanned-photo thumbnail, network-proof `?demo=1` path

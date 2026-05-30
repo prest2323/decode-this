@@ -25,8 +25,8 @@ export interface DecodeResult {
   deadline: string | null;
   /** Triage flag. */
   urgency: Urgency;
-  /** Optional drafted reply (English). null if not applicable. */
-  draftReply: string | null;
+  /** Optional drafted reply, bilingual (en+es). null if not applicable. */
+  draftReply: Record<Lang, string> | null;
 }
 
 // ---- EXPRESS: you -> the world (your tangled thought made into words) ----

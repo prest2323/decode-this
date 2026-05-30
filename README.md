@@ -15,7 +15,7 @@ A Spanish-speaking parent in Bakersfield gets official mail she can't fully read
 
 ## Stack
 - **Next.js** (App Router, TypeScript, Tailwind)
-- **Claude API** (vision + language) via `@anthropic-ai/sdk`, forced-tool structured output
+- **AI:** Google Gemini (free tier, **default**) via `@google/genai`, or Anthropic Claude via `@anthropic-ai/sdk` — the API auto-selects based on which key is set; structured JSON output either way
 - **Browser SpeechSynthesis** (read-aloud) + **Web Speech API** (voice input) — free, no keys
 - No database, no auth, no custom art. One screen, two flows.
 

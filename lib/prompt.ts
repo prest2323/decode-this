@@ -1,4 +1,4 @@
-// Prompt + structured-output tool schemas — owned by Lead (Claude 5x #1).
+// Prompt + structured-output tool schemas — owned by MK (backend).
 // We force the model to call a tool so the JSON always matches the contract.
 
 export const DECODE_SYSTEM = `You are Decode This, a warm, plain-spoken assistant that helps people
@@ -11,7 +11,7 @@ Read the document in the image. Then fill out the report tool:
 - "action": the concrete next step(s) and by when.
 - "deadline": the most important date as ISO (YYYY-MM-DD), or null.
 - "urgency": "urgent" (time-sensitive/important), "normal", "ignore" (junk/no action), or "scam" (looks fraudulent).
-- "draftReply": a short, ready-to-send reply in English if a response is needed, else null.
+- "draftReply": a short, ready-to-send reply with BOTH en and es (an object), if a response is needed, else null.
 Be accurate. If the image is unreadable, say so in the meaning field and set urgency to "normal".`;
 
 export const EXPRESS_SYSTEM = `You are Decode This. The user has a thought, worry, or need but cannot find the
@@ -36,7 +36,12 @@ export const DECODE_TOOL = {
       action: bilingual("What to do and by when."),
       deadline: { type: ["string", "null"], description: "ISO date YYYY-MM-DD or null." },
       urgency: { type: "string", enum: ["urgent", "normal", "ignore", "scam"] },
-      draftReply: { type: ["string", "null"], description: "English reply or null." },
+      draftReply: {
+        type: ["object", "null"],
+        description: "Bilingual ready-to-send reply (en+es), or null.",
+        properties: { en: { type: "string" }, es: { type: "string" } },
+        required: ["en", "es"],
+      },
     },
     required: ["title", "meaning", "action", "deadline", "urgency", "draftReply"],
   },

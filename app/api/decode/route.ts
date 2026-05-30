@@ -1,7 +1,8 @@
 // /api/decode — owned by Lead (Claude 5x #1).
 // Handles BOTH directions: mode "decode" (image -> plain language)
 // and mode "express" (messy thought -> polished words).
-// If ANTHROPIC_API_KEY is missing, returns mock data so the app still runs.
+// Provider auto-select: ANTHROPIC_API_KEY -> Claude, else GEMINI_API_KEY -> Gemini, else mock.
+// A `?demo=1` query param always returns baked mock data for a network-proof live demo.
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ApiRequest, ApiResponse, DecodeResult, ExpressResult } from "@/lib/types";
@@ -28,6 +29,21 @@ export async function POST(req: NextRequest) {
     body = (await req.json()) as ApiRequest;
   } catch {
     return json({ ok: false, error: "Invalid JSON." });
+  }
+
+  // Validate input with clear, human messages before doing any work.
+  if (body.mode === "decode" && (typeof body.image !== "string" || !body.image.startsWith("data:"))) {
+    return json({ ok: false, error: "No image yet — take a photo of the document first." });
+  }
+  if (body.mode === "express" && (typeof body.text !== "string" || !body.text.trim())) {
+    return json({ ok: false, error: "Nothing to put into words yet — say or type something first." });
+  }
+
+  // Deterministic demo path: /api/decode?demo=1 always returns baked mock data,
+  // so the on-stage hero moment never depends on conference wifi.
+  if (req.nextUrl.searchParams.get("demo")) {
+    if (body.mode === "express") return json({ ok: true, mode: "express", result: MOCK_EXPRESS });
+    return json({ ok: true, mode: "decode", result: MOCK_DECODE });
   }
 
   const which = provider();

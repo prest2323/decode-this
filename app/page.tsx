@@ -16,9 +16,16 @@ export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(false);
   const [decoded, setDecoded] = useState<DecodeResult | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [expressText, setExpressText] = useState("");
+  const [audience, setAudience] = useState("");
   const [expressed, setExpressed] = useState<ExpressResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    setError(null);
+  }
 
   async function call(payload: object): Promise<ApiResponse> {
     const res = await fetch("/api/decode", {
@@ -30,8 +37,10 @@ export default function Home() {
   }
 
   async function onImage(dataUrl: string) {
-    setLoading(true);
+    setImageUrl(dataUrl);
+    setDecoded(null);
     setError(null);
+    setLoading(true);
     const r = await call({ mode: "decode", image: dataUrl });
     if (r.ok && r.mode === "decode") setDecoded(r.result);
     else if (!r.ok) setError(r.error);
@@ -39,9 +48,10 @@ export default function Home() {
   }
 
   async function onExpress() {
-    setLoading(true);
+    setExpressed(null);
     setError(null);
-    const r = await call({ mode: "express", text: expressText, lang });
+    setLoading(true);
+    const r = await call({ mode: "express", text: expressText, lang, audience: audience || undefined });
     if (r.ok && r.mode === "express") setExpressed(r.result);
     else if (!r.ok) setError(r.error);
     setLoading(false);
@@ -50,17 +60,17 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-5 py-8">
       <header className="text-center">
-        <h1 className="text-4xl font-black tracking-tight">Decode This</h1>
+        <h1 className="text-4xl font-black tracking-tight text-gray-900">Decode This</h1>
         <p className="mt-1 text-gray-500">
-          It decodes everything — the paperwork you can&apos;t read, and the words you can&apos;t find.
+          The bilingual kid who reads your mail — and helps you answer it.
         </p>
       </header>
 
       <div className="mx-auto inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold">
-        <Tab active={mode === "decode"} onClick={() => setMode("decode")}>
+        <Tab active={mode === "decode"} onClick={() => switchMode("decode")}>
           📄 Decode a document
         </Tab>
-        <Tab active={mode === "express"} onClick={() => setMode("express")}>
+        <Tab active={mode === "express"} onClick={() => switchMode("express")}>
           💬 Find my words
         </Tab>
       </div>
@@ -70,6 +80,7 @@ export default function Home() {
       {mode === "decode" ? (
         <section className="space-y-5">
           <Uploader onImage={onImage} loading={loading} />
+          {loading && !decoded && <SkeletonCard />}
           {decoded && (
             <>
               <div className="flex items-center justify-between">
@@ -79,14 +90,24 @@ export default function Home() {
                   lang={lang}
                 />
               </div>
-              <ResultCard result={decoded} lang={lang} />
+              <div className="grid gap-4 sm:grid-cols-[110px_1fr]">
+                {imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt="The document you scanned"
+                    className="hidden h-32 w-full rounded-xl border border-gray-200 object-cover sm:block"
+                  />
+                )}
+                <ResultCard result={decoded} lang={lang} />
+              </div>
             </>
           )}
         </section>
       ) : (
         <section className="space-y-5">
           <div className="flex justify-end">
-            <MicInput lang={lang} onTranscript={setExpressText} />
+            <MicInput lang={lang} onTranscript={(t) => setExpressText((p) => (p ? `${p} ${t}` : t))} />
           </div>
           <ExpressInput
             value={expressText}
@@ -95,11 +116,29 @@ export default function Home() {
             onLangChange={setLang}
             onSubmit={onExpress}
             loading={loading}
+            audience={audience}
+            onAudienceChange={setAudience}
           />
-          {expressed && <ExpressResultCard result={expressed} />}
+          {loading && !expressed && <SkeletonCard />}
+          {expressed && <ExpressResultCard result={expressed} lang={lang} />}
         </section>
       )}
+
+      <footer className="mt-auto pt-6 text-center text-xs text-gray-400">
+        Built at Hack the Valley · Bakersfield · for the families who get the mail.
+      </footer>
     </main>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
+      <div className="h-7 w-44 rounded-full bg-gray-200" />
+      <div className="h-8 w-3/4 rounded bg-gray-200" />
+      <div className="h-4 w-full rounded bg-gray-100" />
+      <div className="h-4 w-5/6 rounded bg-gray-100" />
+    </div>
   );
 }
 
@@ -115,7 +154,7 @@ function Tab({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-4 py-2 transition ${active ? "bg-white shadow" : "text-gray-500"}`}
+      className={`rounded-full px-4 py-2 transition ${active ? "bg-white text-gray-900 shadow" : "text-gray-500"}`}
     >
       {children}
     </button>
