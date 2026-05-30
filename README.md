@@ -1,5 +1,7 @@
 # Decode This 🔓
 
+> 👋 **Teammates: open [`START-HERE.md`](./START-HERE.md) — find your name, run one line, paste one sentence to your AI. Done.**
+
 **It decodes everything — the paperwork you can't read, and the words you can't find.**
 
 Built at Hack the Valley (CSUB, Bakersfield) — 8-hour build. Tracks: **AI · Social Impact · Education.**
