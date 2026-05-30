@@ -101,13 +101,16 @@ export default function Landing() {
               <W d={315}>step</W>
               <br />
               <W d={400}>in</W> <W d={460}>the</W>{" "}
-              <span className="word-mask relative whitespace-nowrap text-calm">
-                <span className="word" style={{ animationDelay: "540ms" }}>
-                  <span
-                    className="swash-anim absolute inset-x-[-0.14em] bottom-[0.05em] -z-10 h-[0.64em] -rotate-1 rounded-[0.3em]"
-                    aria-hidden
-                  />
-                  spotlight
+              <span className="relative whitespace-nowrap text-calm">
+                {/* swash sits OUTSIDE the clip-mask so its extension isn't cut */}
+                <span
+                  className="swash-anim absolute inset-x-[-0.14em] bottom-[0.05em] -z-10 h-[0.64em] -rotate-1 rounded-[0.3em]"
+                  aria-hidden
+                />
+                <span className="word-mask">
+                  <span className="word" style={{ animationDelay: "540ms" }}>
+                    spotlight
+                  </span>
                 </span>
               </span>
               <span className="word" style={{ animationDelay: "560ms" }}>
