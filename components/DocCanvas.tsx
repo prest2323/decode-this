@@ -141,10 +141,14 @@ export default function DocCanvas() {
 
   // Zoom + pan to focus the active step's box(es). Only the document layer is
   // transformed; the GuideBox stays un-zoomed + clickable. Animates between steps.
+  // We TRANSLATE so the active box's center lands at the viewport center (always
+  // centered), then scale — origin top-left so the centering math is exact.
   const focusRect = active && active.spotlight && active.spotlight.page === idx ? active.spotlight : null;
   const zoom = focusRect ? 1.3 : 1;
-  const originX = focusRect ? (focusRect.x + focusRect.w / 2) * 100 : 50;
-  const originY = focusRect ? (focusRect.y + focusRect.h / 2) * 100 : 50;
+  const cx = focusRect ? focusRect.x + focusRect.w / 2 : 0.5;
+  const cy = focusRect ? focusRect.y + focusRect.h / 2 : 0.5;
+  const txPct = (0.5 - cx * zoom) * 100;
+  const tyPct = (0.5 - cy * zoom) * 100;
 
   return (
     <div className="flex h-full flex-col">
@@ -174,14 +178,14 @@ export default function DocCanvas() {
 
       <div className="flex flex-1 items-start justify-center overflow-auto">
         <div
-          className="relative w-full max-w-[640px] overflow-hidden rounded-lg border border-slate-300 shadow-sm"
+          className="relative w-full max-w-[640px] overflow-hidden rounded-lg border border-slate-300 bg-slate-800 shadow-sm"
           style={{ aspectRatio: `${width} / ${height}` }}
         >
           {/* Document layer: zoom/pan to focus the active box. Inputs + spotlight
               ride along so they stay aligned at any zoom. */}
           <div
             className="absolute inset-0 transition-transform duration-500 ease-out"
-            style={{ transform: `scale(${zoom})`, transformOrigin: `${originX}% ${originY}%` }}
+            style={{ transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`, transformOrigin: "0 0" }}
           >
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
