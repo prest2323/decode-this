@@ -26,6 +26,7 @@ import {
   PDFOptionList,
   PDFButton,
 } from "pdf-lib";
+import { createHash } from "node:crypto";
 import type {
   AnalyzeRequest,
   Difficulty,
@@ -60,6 +61,76 @@ function parseFile(req: AnalyzeRequest): ParsedFile {
     return { mimeType: req.mime, data: req.file.replace(/^data:.*?,/, ""), isText: false };
   }
   return { mimeType: req.mime || "text/plain", data: req.file, isText: true };
+}
+
+// ============================================================================
+//  RELIABILITY — timeout + one retry (shared deadline) + identical-doc cache
+// ============================================================================
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Reject if `p` hasn't settled within `ms`. The late settlement of the original
+ *  promise is swallowed (handlers attached) so there's no unhandled rejection. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** Run `fn`, retrying once with backoff on failure, under a TOTAL time budget so
+ *  the route's maxDuration is never blown (a hung first attempt leaves no time
+ *  for a second — we fall through to the mock instead). */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: { tries?: number; totalMs: number; backoffMs?: number; label: string },
+): Promise<T> {
+  const { tries = 2, totalMs, backoffMs = 800, label } = opts;
+  const deadline = Date.now() + totalMs;
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      return await withTimeout(fn(), remaining, label);
+    } catch (e) {
+      lastErr = e;
+      const wait = Math.min(backoffMs * (i + 1), Math.max(0, deadline - Date.now()));
+      if (i < tries - 1 && wait > 0) await sleep(wait);
+    }
+  }
+  throw lastErr ?? new Error(`${label} failed`);
+}
+
+// In-memory cache of identical-doc analyses (per server instance). Keyed by the
+// provider/model + a content hash of the file, so re-uploading the SAME document
+// (or the eval hitting the same sample repeatedly) returns instantly. Only
+// successful REAL analyses are cached — never the mock fallback, so a transient
+// failure doesn't get pinned. Capacity-bounded FIFO; values hold no user input.
+const analysisCache = new Map<string, DocumentModel>();
+const ANALYSIS_CACHE_MAX = 24;
+function analysisKey(file: string): string {
+  const hash = createHash("sha256").update(file).digest("hex");
+  return `${provider()}|${GEMINI_MODEL}|${ANTHROPIC_MODEL}|${hash}`;
+}
+function cacheGet(key: string): DocumentModel | undefined {
+  return analysisCache.get(key);
+}
+function cacheSet(key: string, model: DocumentModel): void {
+  analysisCache.set(key, model);
+  if (analysisCache.size > ANALYSIS_CACHE_MAX) {
+    const oldest = analysisCache.keys().next().value;
+    if (oldest !== undefined) analysisCache.delete(oldest);
+  }
 }
 
 // ============================================================================
@@ -573,6 +644,11 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
   const which = provider();
   if (which === "mock") return fallback;
 
+  // (0) identical-doc cache — re-uploads / repeated eval hits return instantly.
+  const key = analysisKey(req.file);
+  const cached = cacheGet(key);
+  if (cached) return { ...cached, fileName };
+
   const parsed = parseFile(req);
 
   // (1) real field coordinates for AcroForm PDFs (best-effort; [] otherwise)
@@ -587,7 +663,15 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
   const systemText = EXTRACT_SYSTEM + acroInventoryHint(acro);
 
   try {
-    const raw = which === "gemini" ? await extractWithGemini(parsed, systemText) : await extractWithAnthropic(parsed, systemText);
+    // (2) model call: one retry with backoff under a shared time budget < the
+    // route's maxDuration, so a hung call falls through to the mock cleanly.
+    const raw = await withRetry(
+      () =>
+        which === "gemini"
+          ? extractWithGemini(parsed, systemText)
+          : extractWithAnthropic(parsed, systemText),
+      { totalMs: 55_000, label: "extract" },
+    );
     let model = normalizeDoc(raw, fileName);
     // A reply with no requirements is useless on stage — protect the demo.
     if (model.requirements.length === 0) return fallback;
@@ -596,6 +680,7 @@ export async function analyzeDocument(req: AnalyzeRequest): Promise<DocumentMode
     model = { ...model, requirements: groupAndOrder(model.requirements) };
     // (4) the model doesn't render pages; give the canvas one so it never crashes.
     if (model.pages.length === 0) model = { ...model, pages: buildPages(parsed, req.file) };
+    cacheSet(key, model);
     return model;
   } catch (e) {
     console.error("extract failed, falling back to mock:", e);

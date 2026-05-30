@@ -8,11 +8,52 @@ import type { ChatRequest, ChatResult, Lang } from "@/lib/types";
 import { provider, geminiClient, anthropicClient, GEMINI_MODEL, ANTHROPIC_MODEL } from "@/lib/ai";
 import { CHAT_SYSTEM } from "@/lib/prompt";
 
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Reject if `p` hasn't settled within `ms` (late settlement is swallowed). */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** One retry with backoff under a TOTAL time budget; on exhaustion the caller
+ *  falls back to the grounded mock, so chat never hangs on stage. */
+async function withRetry<T>(fn: () => Promise<T>, totalMs: number, label: string): Promise<T> {
+  const deadline = Date.now() + totalMs;
+  let lastErr: unknown;
+  for (let i = 0; i < 2; i++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      return await withTimeout(fn(), remaining, label);
+    } catch (e) {
+      lastErr = e;
+      if (i === 0 && deadline - Date.now() > 600) await sleep(600);
+    }
+  }
+  throw lastErr ?? new Error(`${label} failed`);
+}
+
 export async function chatAnswer(req: ChatRequest): Promise<ChatResult> {
   const which = provider();
   if (which === "mock") return groundedMockAnswer(req);
   try {
-    const text = which === "gemini" ? await chatWithGemini(req) : await chatWithAnthropic(req);
+    const text = await withRetry(
+      () => (which === "gemini" ? chatWithGemini(req) : chatWithAnthropic(req)),
+      30_000,
+      "chat",
+    );
     const answer = text.trim();
     if (!answer) return groundedMockAnswer(req);
     return { answer, citedRequirementIds: deriveCited(req) };
