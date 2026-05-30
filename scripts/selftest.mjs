@@ -95,6 +95,11 @@ async function main() {
   const act = await chatAnswer({ question: "help", lang: "en", doc: MOCK_DOC, activeRequirementId: "r_address" });
   check("active-step fallback cites the active req", (act.citedRequirementIds || []).includes("r_address"));
 
+  const adv = await chatAnswer({ question: "should I sign this? can they take my house?", lang: "en", doc: MOCK_DOC });
+  check("legal/financial advice routes to a professional", /professional|legal aid|financial counselor/i.test(adv.answer));
+  const advEs = await chatAnswer({ question: "¿pueden quitar mi casa si no pago?", lang: "es", doc: MOCK_DOC });
+  check("advice routing answers in Spanish", /profesional|asistencia legal|consejero/i.test(advEs.answer));
+
   // ---------------- AcroForm coordinate extraction (task 2) ----------------
   section("extract.ts — extractAcroFields (real widget rects)");
   // Build a known-geometry AcroForm PDF in-memory: a name box + an address row.
