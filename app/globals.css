@@ -17,32 +17,11 @@
   --radius-sm: 0px;
 }
 
-/* 1. High specificity landing page legibility overrides */
-h1, h2, h3, h4, h5, h6, 
-h1.text-slate-900, 
-h1.text-4xl,
-main h1, 
-header h1,
-.text-slate-900,
-[class*="text-slate-900"] {
-  color: #ffffff !important;
-}
+/* ========================================================
+   1. SEMANTIC DARK MODE THEME UTILITY OVERRIDES (VS CODE THEME)
+   ======================================================== */
 
-p, span, div, 
-main p,
-main p.text-slate-500,
-.text-slate-550,
-.text-slate-600, 
-.text-slate-500, 
-[class*="text-slate-600"] {
-  color: #cccccc !important;
-}
-
-.text-slate-400, .text-slate-350, [class*="text-slate-400"] {
-  color: #858585 !important;
-}
-
-/* 2. Global background and text layout */
+/* Global base styles */
 html, body {
   background-color: #1e1e1e !important;
   background-image: none !important;
@@ -56,50 +35,107 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 3. Global Dark Panel Overrides */
-section, aside, header, .bg-white, .sharp-card, [class*="bg-white"] {
+/* Panel Background Overrides */
+.bg-white {
   background-color: #252526 !important;
-  border-color: #3c3c3c !important;
-  color: #cccccc !important;
-  border-radius: 2px !important;
 }
 
-/* 4. Global Border Overrides */
-.border-slate-200, .border-slate-300, .border-slate-100, [class*="border-slate-200"], [class*="border-slate-100"] {
-  border-color: #3c3c3c !important;
+.bg-slate-50 {
+  background-color: #1e1e1e !important;
 }
 
-/* 5. Sleek VS Code Button Overrides */
-button.border-slate-300, button.bg-slate-900, [class*="border-slate-300"], [class*="bg-slate-900"] {
-  border-color: #3c3c3c !important;
+.bg-slate-100 {
   background-color: #2d2d2d !important;
-  color: #cccccc !important;
-  border-radius: 2px !important;
-}
-
-button.border-slate-300:hover, button.bg-slate-900:hover, [class*="border-slate-300"]:hover {
-  background-color: #3e3e3f !important;
-  border-color: #555555 !important;
-  color: #ffffff !important;
-}
-
-/* 6. List and Checklist Highlights */
-.bg-slate-100, [class*="bg-slate-100"], [class*="hover:bg-slate-50"] {
-  background-color: #2d2d2d !important;
-  border-color: #3c3c3c !important;
 }
 
 .bg-slate-150 {
   background-color: #2d2d2d !important;
-  color: #858585 !important;
+}
+
+/* Primary Action Buttons & User Chat Bubbles (High Contrast Accent Blue) */
+.bg-slate-900 {
+  background-color: #007acc !important;
+  color: #ffffff !important;
+}
+
+.hover\:bg-slate-800:hover {
+  background-color: #1a8ad4 !important;
+  color: #ffffff !important;
+}
+
+/* Default / Inactive Buttons & Hover States */
+button.bg-white,
+button.border-slate-200 {
+  background-color: #2d2d2d !important;
+  border-color: #3c3c3c !important;
+  color: #cccccc !important;
+}
+
+button.bg-white:hover,
+button.border-slate-200:hover,
+.hover\:bg-slate-50:hover,
+.hover\:bg-slate-50\/70:hover {
+  background-color: #3e3e3f !important;
+  color: #ffffff !important;
+}
+
+/* Checklist / Navigation List Highlight Overrides */
+/* Style active checklist items for high-contrast corporate dark-blue selection */
+.bg-slate-100.ring-slate-350,
+button.bg-slate-100 {
+  background-color: #094771 !important;
+  box-shadow: inset 0 0 0 1px #007acc !important;
+}
+
+.bg-slate-100.ring-slate-350 .text-slate-800,
+button.bg-slate-100 .text-slate-800 {
+  color: #ffffff !important;
+}
+
+/* Border Overrides */
+.border-slate-100,
+.border-slate-200,
+.border-slate-300 {
   border-color: #3c3c3c !important;
 }
 
-.ring-slate-350 {
-  --tw-ring-color: #3c3c3c !important;
+.border-slate-950 {
+  border-color: #007acc !important;
 }
 
-/* 7. Input and Dropdown Overrides */
+/* Bold / Accent text colors */
+.text-slate-900 {
+  color: #ffffff !important;
+}
+
+.text-slate-800 {
+  color: #f0f0f0 !important;
+}
+
+.text-slate-700 {
+  color: #cccccc !important;
+}
+
+/* Body / Secondary text colors */
+.text-slate-600 {
+  color: #bbbbbb !important;
+}
+
+.text-slate-500 {
+  color: #aaaaaa !important;
+}
+
+/* Muted / Caption text colors */
+.text-slate-400 {
+  color: #858585 !important;
+}
+
+/* Premium Focus / Active Ring Outlines */
+.ring-slate-350 {
+  --tw-ring-color: #007acc !important;
+}
+
+/* Form inputs & interactive fields */
 input, select, textarea {
   background-color: #2d2d2d !important;
   border-color: #3c3c3c !important;
@@ -112,9 +148,9 @@ input:focus, select:focus, textarea:focus {
   --tw-ring-color: rgba(0, 122, 204, 0.4) !important;
 }
 
-/* 8. Language Selector and Header Action Buttons */
+/* Rounded pills & language bar containers */
 .inline-flex.rounded-full.border.border-slate-300 {
-  border-radius: 2px !important;
+  border-radius: 4px !important;
   border-color: #3c3c3c !important;
   background-color: #2d2d2d !important;
 }
