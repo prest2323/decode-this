@@ -15,6 +15,7 @@ import Uploader from "@/components/Uploader";
 import { Wordmark } from "@/components/Wordmark";
 import LiveDemo from "@/components/LiveDemo";
 import { Reveal } from "@/components/Reveal";
+import { Tilt, Magnetic, Parallax, CursorSpotlight } from "@/components/motion";
 
 const SAMPLES: {
   key: string;
@@ -28,6 +29,17 @@ const SAMPLES: {
   { key: "benefits", label: "Food benefits", sub: "CalFresh renewal", who: "Families", icon: <IconBasket /> },
   { key: "uscis", label: "Citizenship", sub: "Form N-400", who: "New Americans", icon: <IconFlag /> },
 ];
+
+// One headline word that rises out of a clipped line box, on a timed delay.
+function W({ children, d }: { children: React.ReactNode; d: number }) {
+  return (
+    <span className="word-mask">
+      <span className="word" style={{ animationDelay: `${d}ms` }}>
+        {children}
+      </span>
+    </span>
+  );
+}
 
 // Soft pill eyebrow — a warm wash, not a skinny line.
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -68,9 +80,10 @@ export default function Landing() {
 
       {/* ── Hero ────────────────────────────────────────────────── */}
       <section className="relative">
-        {/* drifting aurora + faint dot-grid texture behind the hero */}
+        {/* drifting aurora + faint dot-grid texture + cursor spotlight */}
         <div className="aurora" aria-hidden />
         <div className="dot-grid pointer-events-none absolute inset-0" aria-hidden />
+        <CursorSpotlight />
 
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-28 pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:pt-24">
           <div>
@@ -83,21 +96,26 @@ export default function Landing() {
               A calmer way through hard paperwork
             </div>
 
-            <h1
-              className="animate-rise font-display mt-6 text-[3.1rem] font-semibold leading-[1.03] tracking-tight text-ink sm:text-[4.1rem]"
-              style={{ animationDelay: "80ms" }}
-            >
-              Put your next step
+            <h1 className="font-display mt-6 text-[3.1rem] font-semibold leading-[1.03] tracking-tight text-ink sm:text-[4.1rem]">
+              <W d={120}>Put</W> <W d={185}>your</W> <W d={250}>next</W>{" "}
+              <W d={315}>step</W>
               <br />
-              in the{" "}
+              <W d={400}>in</W> <W d={460}>the</W>{" "}
               <span className="relative whitespace-nowrap text-calm">
+                {/* swash sits OUTSIDE the clip-mask so its extension isn't cut */}
                 <span
                   className="swash-anim absolute inset-x-[-0.14em] bottom-[0.05em] -z-10 h-[0.64em] -rotate-1 rounded-[0.3em]"
                   aria-hidden
                 />
-                spotlight
+                <span className="word-mask">
+                  <span className="word" style={{ animationDelay: "540ms" }}>
+                    spotlight
+                  </span>
+                </span>
               </span>
-              .
+              <span className="word" style={{ animationDelay: "560ms" }}>
+                .
+              </span>
             </h1>
 
             <p
@@ -114,14 +132,16 @@ export default function Landing() {
               className="animate-rise mt-9 flex flex-wrap items-center gap-3"
               style={{ animationDelay: "240ms" }}
             >
-              <button
-                type="button"
-                onClick={() => tryDoc(MOCK_SBA)}
-                className="group relative overflow-hidden rounded-full bg-calm px-8 py-4 text-base font-semibold text-paper shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:bg-calm-deep hover:shadow-lift"
-              >
-                <span className="relative z-10">Launch the live demo →</span>
-                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              </button>
+              <Magnetic strength={10}>
+                <button
+                  type="button"
+                  onClick={() => tryDoc(MOCK_SBA)}
+                  className="group relative overflow-hidden rounded-full bg-calm px-8 py-4 text-base font-semibold text-paper shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:bg-calm-deep hover:shadow-lift"
+                >
+                  <span className="relative z-10">Launch the live demo →</span>
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                </button>
+              </Magnetic>
               <a
                 href="#walkthrough"
                 className="rounded-full border border-line-strong bg-card px-8 py-4 text-base font-medium text-ink transition-all duration-300 hover:-translate-y-0.5 hover:border-calm-2"
@@ -142,7 +162,7 @@ export default function Landing() {
 
           {/* live demo — the larger, calmer star of the hero */}
           <div className="animate-fade-in flex justify-center lg:justify-end" style={{ animationDelay: "320ms" }}>
-            <div className="relative">
+            <Tilt glow max={5} className="w-full max-w-[600px]">
               <LiveDemo />
               {/* floating glass stat card — adds depth + interest */}
               <div className="floaty-soft absolute -bottom-6 -left-6 z-20 hidden rounded-2xl border border-line bg-card/95 px-4 py-3 shadow-lift backdrop-blur-md sm:block">
@@ -156,7 +176,7 @@ export default function Landing() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Tilt>
           </div>
         </div>
       </section>
@@ -248,12 +268,18 @@ export default function Landing() {
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {SAMPLES.map((s, idx) => (
-              <Reveal key={s.key} delay={idx * 80} dir="up">
+              <Reveal key={s.key} delay={idx * 80} dir="up" className="h-full">
+                <Tilt max={6} className="h-full">
                 <button
                   type="button"
                   onClick={() => tryDoc(MOCK_VARIANTS[s.key])}
                   className="group relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-line bg-card p-6 text-left shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:border-calm-2 hover:shadow-lift"
                 >
+                  {/* pointer-follow glow (reads --mx/--my from the Tilt wrapper) */}
+                  <span
+                    className="pointer-events-none absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                    style={{ background: "radial-gradient(16rem 16rem at var(--mx,50%) var(--my,50%), rgba(194,103,75,0.10), transparent 60%)" }}
+                  />
                   {/* hover wash */}
                   <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-warm-soft/40 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
                   <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-calm-soft text-calm transition-transform duration-300 group-hover:scale-110 group-hover:bg-calm group-hover:text-paper">
@@ -267,6 +293,7 @@ export default function Landing() {
                     <span className="transition-transform duration-300 group-hover:translate-x-1.5">→</span>
                   </span>
                 </button>
+                </Tilt>
               </Reveal>
             ))}
           </div>
@@ -370,10 +397,12 @@ function WalkRow({
         </ul>
       </Reveal>
       <Reveal dir={reverse ? "right" : "left"} delay={120} className={`flex justify-center ${reverse ? "lg:order-1" : ""}`}>
-        <div className="drift-slow relative w-full max-w-[460px]">
-          <div className="pointer-events-none absolute -inset-8 -z-10 rounded-3xl bg-calm-soft/35 blur-3xl" />
-          {visual}
-        </div>
+        <Parallax speed={26} className="relative w-full max-w-[460px]">
+          <div className="drift-slow relative">
+            <div className="pointer-events-none absolute -inset-8 -z-10 rounded-3xl bg-calm-soft/35 blur-3xl" />
+            {visual}
+          </div>
+        </Parallax>
       </Reveal>
     </div>
   );

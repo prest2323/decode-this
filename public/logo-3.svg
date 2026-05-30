@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Warm Anthropic-style pastel background -->
+  <rect width="512" height="512" rx="256" fill="#F5F4F0" />
+  <!-- Origami / Folded Paper forming a D -->
+  <path d="M160 128V384H256C326.7 384 384 326.7 384 256C384 185.3 326.7 128 256 128H160Z" fill="#D38C6D" />
+  <path d="M160 128V384H256C326.7 384 384 326.7 384 256C384 185.3 326.7 128 256 128H160Z" fill="url(#grad)" />
+  <path d="M160 128L256 256H384C384 185.3 326.7 128 256 128H160Z" fill="#C47958" />
+  <defs>
+    <linearGradient id="grad" x1="160" y1="128" x2="384" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="black" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+</svg>
