@@ -183,14 +183,44 @@ export default function DocCanvas() {
 /**
  * PageRenderer handles high fidelity canvas rendering from a PDF document,
  * or defaults to displaying the fallback mock raster image.
+ * Uses IntersectionObserver to render canvas pages only when they enter
+ * the viewport, drastically improving initial load and scroll performance.
  */
 function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [renderError, setRenderError] = useState(false);
   const [rendering, setRendering] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
+  // 1. Observe intersection to lazy render PDF pages
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return;
+    if (!pdfDoc || !containerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect(); // Render once and stay rendered
+        }
+      },
+      {
+        rootMargin: "400px", // Pre-render when the page is within 400px of the viewport
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pdfDoc]);
+
+  // 2. Perform rendering only when PDF document is loaded AND the page is visible
+  useEffect(() => {
+    if (!pdfDoc || !canvasRef.current || !isVisible) return;
     
     let isCurrent = true;
     let renderTask: any = null;
@@ -199,7 +229,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
       setRendering(true);
       try {
         const page = await pdfDoc.getPage(p.index + 1);
-        const scale = 2; // Crisp on Retina/HiDPI screens
+        const scale = 1.5; // Highly optimized scale (crisp yet performant on Retina/HiDPI screens)
         const viewport = page.getViewport({ scale });
         const canvas = canvasRef.current;
         
@@ -231,7 +261,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
         renderTask.cancel();
       }
     };
-  }, [pdfDoc, p.index]);
+  }, [pdfDoc, p.index, isVisible]);
 
   // Fallback to raster mock image if PDF document is not available, or image is explicitly a data URL
   if (!pdfDoc || (p.image && p.image.startsWith("data:image/"))) {
@@ -241,6 +271,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
         alt={`Page ${p.index + 1}`}
         className="block h-full w-full select-none opacity-85"
         draggable={false}
+        loading="lazy"
       />
     );
   }
@@ -254,7 +285,7 @@ function PageRenderer({ p, pdfDoc }: { p: DocPage; pdfDoc: any }) {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full">
       {rendering && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#252526]/50 z-10">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#007acc] border-t-transparent shadow-sm" />
