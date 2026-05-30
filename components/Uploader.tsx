@@ -11,8 +11,18 @@ export default function Uploader() {
   const { loadDoc } = useDoc();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [drag, setDrag] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
 
   const analyze = useCallback(
     async (file: File) => {
@@ -22,19 +32,29 @@ export default function Uploader() {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const r = new FileReader();
           r.onload = () => resolve(r.result as string);
-          r.onerror = () => reject(new Error("read failed"));
+          r.onerror = () => reject(new Error("File reading failed"));
           r.readAsDataURL(file);
         });
+
+        // Store the original base64 file in the client-side global variable so DocCanvas can render it crisp via PDF.js
+        if (typeof window !== "undefined") {
+          (window as any).__pdfData = dataUrl;
+        }
+
         const resp = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileName: file.name, file: dataUrl, mime: file.type }),
         });
+
         const json = (await resp.json()) as ApiResponse<DocumentModel>;
-        if (json.ok) loadDoc(json.result);
-        else setError(json.error);
-      } catch {
-        setError("Something went wrong reading that file. Try the sample to keep going.");
+        if (json.ok) {
+          loadDoc(json.result);
+        } else {
+          setError(json.error || "The AI analyzer encountered an error. Try again or run the demo sample.");
+        }
+      } catch (err: any) {
+        setError("Unable to read this file. Please make sure it is a valid PDF or Image, or try the mock sample.");
       } finally {
         setLoading(false);
       }
@@ -42,53 +62,96 @@ export default function Uploader() {
     [loadDoc],
   );
 
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        analyze(e.dataTransfer.files[0]);
+      }
+    },
+    [analyze],
+  );
+
   return (
-    <div className="mx-auto w-full max-w-xl text-center">
+    <div className="mx-auto w-full max-w-xl text-center px-4">
+      {/* Dashed Drag & Drop Box */}
       <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          const f = e.dataTransfer.files?.[0];
-          if (f) analyze(f);
-        }}
-        onClick={() => inputRef.current?.click()}
-        className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 transition ${
-          drag ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-white hover:border-slate-400"
-        }`}
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+        onClick={() => !loading && inputRef.current?.click()}
+        className={`relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
+          dragActive
+            ? "border-brand bg-brand-soft/50 scale-[1.01] shadow-md"
+            : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50/50"
+        } ${loading ? "pointer-events-none opacity-60" : ""}`}
       >
-        <div className="text-4xl">📄</div>
-        <p className="mt-3 text-lg font-semibold text-slate-800">
-          {loading ? "Reading your document…" : "Drop a complex document here"}
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          PDF or image. We&apos;ll break it down and walk you through every step.
-        </p>
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf,image/*"
           className="hidden"
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) analyze(f);
+            if (e.target.files && e.target.files[0]) {
+              analyze(e.target.files[0]);
+            }
           }}
         />
+
+        {loading ? (
+          // Spinner Loading State
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+            <p className="text-base font-bold text-slate-800 animate-pulse">
+              AI Analyzing your document…
+            </p>
+            <p className="text-xs text-slate-500">
+              Breaking down complex clauses & requirements
+            </p>
+          </div>
+        ) : (
+          // Idle Upload State
+          <>
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              📂
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-800">
+                📷 Take a photo / Upload your document
+              </p>
+              <p className="mt-1 text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Drop your PDF or image here, or tap to browse. Works with mobile cameras.
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
-      {error && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <div className="mt-4 rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-600 flex items-center gap-2 text-left animate-fadeIn">
+          <span className="text-base">⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
 
+      {/* Mock Document Fallback */}
       <button
         type="button"
-        onClick={() => loadDoc(MOCK_DOC)}
+        onClick={() => {
+          if (typeof window !== "undefined") {
+            (window as any).__pdfData = null; // Clear manual PDF data to trigger mock raster
+          }
+          loadDoc(MOCK_DOC);
+        }}
         disabled={loading}
-        className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-800 hover:shadow-lg active:scale-95 transition-all disabled:opacity-50"
       >
-        ✨ Try the sample — an SBA 7(a) loan application
+        ✨ Try the SBA 7(a) loan application sample
       </button>
     </div>
   );
