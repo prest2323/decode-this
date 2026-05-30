@@ -49,6 +49,7 @@ export default function GuideBox() {
         top: "50%",
         transform: "translate(-50%, -50%)",
         width: `${GUIDE_W}px`,
+        maxWidth: "calc(100% - 16px)",
       };
     }
 
@@ -112,6 +113,7 @@ export default function GuideBox() {
       left: `${pos.left}px`,
       top: `${pos.top}px`,
       width: `${GUIDE_W}px`,
+      maxWidth: "calc(100% - 16px)",
     };
   }, [active, dimensions]);
 

@@ -42,8 +42,15 @@ export default function ChatWidget() {
         "Pregúntame sobre cualquier paso, una tarifa, una fecha límite o qué significa un término."
       );
 
-  async function send() {
-    const q = input.trim();
+
+  const suggestions = [
+    t("What's a personal guarantee?", "¿Qué es una garantía personal?"),
+    t("When is this due?", "¿Cuándo vence esto?"),
+    t("What fees are there?", "¿Qué tarifas hay?"),
+  ];
+
+  async function send(customQ?: string) {
+    const q = (customQ || input).trim();
     if (!q || busy || !doc) return;
     setInput("");
     setMsgs((m) => [...m, { role: "user", text: q }]);
@@ -88,7 +95,7 @@ export default function ChatWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.03] active:scale-95 transition-all duration-200"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.03] active:scale-95 transition-all duration-200"
       >
         <span>💬</span> {t("Ask about this document", "Preguntar sobre este documento")}
       </button>
@@ -96,7 +103,7 @@ export default function ChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[28rem] w-[22rem] max-w-[90vw] flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 animate-scale-in">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-[28rem] w-[calc(100vw-2rem)] sm:w-[22rem] flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 animate-scale-in">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-2xl">
         <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
@@ -166,6 +173,22 @@ export default function ChatWidget() {
           </div>
         )}
       </div>
+
+      {/* Suggested question chips */}
+      {!busy && (
+        <div className="flex flex-wrap gap-1.5 px-3 py-2 border-t border-slate-100/60 bg-slate-50/30">
+          {suggestions.map((s, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => send(s)}
+              className="rounded-full border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 px-3 py-1 text-[10px] font-bold text-slate-600 hover:text-indigo-700 shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+            >
+              💡 {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Input Form */}
       <form

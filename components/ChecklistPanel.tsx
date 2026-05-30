@@ -2,6 +2,7 @@
 // ChecklistPanel — template owner Aiden. The "Checklist" view: every Requirement
 // as a step, grouped by status, with a type icon + flag hints. Click a step to
 // jump the tour there (goTo). Highlights the active step. Reads useDoc().
+import { useRef, useEffect } from "react";
 import { useDoc } from "@/lib/store";
 import type { RequirementType } from "@/lib/types";
 import { FlagChip } from "./RiskSummary";
@@ -16,6 +17,20 @@ const TYPE_ICON: Record<RequirementType, string> = {
 
 export default function ChecklistPanel() {
   const { doc, reqs, activeIndex, lang, goTo, setStatus, exportAs } = useDoc();
+  const listRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    if (!listRef.current) return;
+    const children = listRef.current.children;
+    const activeItem = children[activeIndex] as HTMLElement;
+    if (activeItem) {
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      activeItem.scrollIntoView({
+        behavior: prefersReduced ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
+  }, [activeIndex]);
   
   if (!doc || reqs.length === 0) {
     return (
@@ -62,7 +77,7 @@ export default function ChecklistPanel() {
         </div>
       )}
 
-      <ol className="min-h-0 flex-1 overflow-y-auto p-3 space-y-2">
+      <ol ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-3 space-y-2 max-h-[350px] lg:max-h-none">
         {reqs.map((r, i) => {
           const isActive = i === activeIndex;
           const isDone = r.status === "done";
