@@ -292,3 +292,8 @@ export const MOCK_DOC: DocumentModel = {
     { kind: "legal-risk", label: { en: "Personal guarantee required", es: "Se requiere garantía personal" } },
   ],
 };
+
+// Canonical hero export. The backend modules + the eval harness target the SBA
+// document by this name; `MOCK_DOC` stays as the generic fallback the API (Preston)
+// already imports, so both names resolve to the one coherent SBA model.
+export const MOCK_SBA: DocumentModel = MOCK_DOC;
