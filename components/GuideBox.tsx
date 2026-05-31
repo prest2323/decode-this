@@ -22,7 +22,6 @@ import { stepInsight } from "@/lib/insights";
 
 const GUIDE_W = 296;
 const GAP = 16;
-const ZOOM = 1.3; // must match the focus zoom in DocCanvas
 
 export default function GuideBox() {
   const { active, reqs, activeIndex, lang, next, prev, setStatus } = useDoc();
@@ -91,11 +90,15 @@ export default function GuideBox() {
     if (!spot) {
       return { ...base, left: `${Math.max(8, W / 2 - cw / 2)}px`, top: `${Math.max(8, H / 2 - cardH / 2)}px` };
     }
-    // Focused box is centered + zoomed by DocCanvas → it sits at the viewport center.
-    const boxHalfH = (spot.h * H * ZOOM) / 2;
-    const left = Math.max(8, Math.min(W / 2 - cw / 2, W - cw - 8));
-    const below = H / 2 + boxHalfH + GAP;
-    const above = H / 2 - boxHalfH - GAP - cardH;
+    // The document runs on at full size (no zoom) — place the card above/below the
+    // box at its real position, centered on it, and never overlapping it.
+    const sx = spot.x * W;
+    const sy = spot.y * H;
+    const sw = spot.w * W;
+    const sh = spot.h * H;
+    const left = Math.max(8, Math.min(sx + sw / 2 - cw / 2, W - cw - 8));
+    const below = sy + sh + GAP;
+    const above = sy - GAP - cardH;
     let top: number;
     if (below + cardH <= H - 8) top = below; // prefer below the box
     else if (above >= 8) top = above; // else above it

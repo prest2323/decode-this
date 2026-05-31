@@ -6,7 +6,7 @@
 // /public) so the crisp real form shows and the NORMALIZED rects overlay it
 // exactly. Pages render progressively — the first appears, the rest fill in. The
 // render is keyed by the doc id, so a stale render is ignored once a new doc loads.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDoc } from "@/lib/store";
 import FieldOverlay from "@/components/FieldOverlay";
 import Spotlight from "@/components/Spotlight";
@@ -64,6 +64,8 @@ export default function DocCanvas() {
   const { doc, active, lang } = useDoc();
   const [page, setPage] = useState(0);
   const [pdf, setPdf] = useState<PdfRender | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   // Jump to the page the active step lives on. Keyed on the page NUMBER, not the
   // whole `active` object: `active` is a fresh reference on every field edit, so
@@ -124,6 +126,22 @@ export default function DocCanvas() {
     };
   }, [docId]);
 
+  // The document runs on at full height; rather than zoom/crop, we scroll the
+  // active step's box to the centre of the viewport so it's never cut off.
+  const activeSpotY = active?.spotlight?.y ?? null;
+  const activeSpotH = active?.spotlight?.h ?? 0;
+  useEffect(() => {
+    if (activeSpotY == null) return;
+    const sc = scrollRef.current;
+    const pg = pageRef.current;
+    if (!sc || !pg) return;
+    const id = requestAnimationFrame(() => {
+      const center = (activeSpotY + activeSpotH / 2) * pg.offsetHeight;
+      sc.scrollTo({ top: Math.max(0, center - sc.clientHeight / 2), behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [activeSpotY, activeSpotH, page, pdf]);
+
   if (!doc) return null;
 
   // Use the live PDF render only if it's for THIS doc (else a stale one lingers).
@@ -143,17 +161,6 @@ export default function DocCanvas() {
     active && active.spotlight && active.spotlight.page === idx
       ? active.fields.filter((f) => f.rect.page === idx).map((f) => f.rect)
       : [];
-
-  // Zoom + pan to focus the active step's box(es). Only the document layer is
-  // transformed; the GuideBox stays un-zoomed + clickable. Animates between steps.
-  // We TRANSLATE so the active box's center lands at the viewport center (always
-  // centered), then scale — origin top-left so the centering math is exact.
-  const focusRect = active && active.spotlight && active.spotlight.page === idx ? active.spotlight : null;
-  const zoom = focusRect ? 1.3 : 1;
-  const cx = focusRect ? focusRect.x + focusRect.w / 2 : 0.5;
-  const cy = focusRect ? focusRect.y + focusRect.h / 2 : 0.5;
-  const txPct = (0.5 - cx * zoom) * 100;
-  const tyPct = (0.5 - cy * zoom) * 100;
 
   const t = (en: string, es: string) => (lang === "es" ? es : en);
 
@@ -186,38 +193,31 @@ export default function DocCanvas() {
         </div>
       )}
 
-      {/* Full-screen document: the page fills the height, centered, as big as it fits. */}
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-1">
-        <div className="relative h-full" style={{ aspectRatio: `${width} / ${height}` }}>
-          {/* Clipped viewport — the zoom/pan layer lives here so it can't spill past
-              the rounded page edge. The guide card sits OUTSIDE it (below), so it's
-              never clipped. */}
+      {/* The document runs on at full WIDTH — the whole form is here, nothing
+          cropped. It scrolls vertically; the active box is scrolled into view. */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto p-1">
+        <div ref={pageRef} className="relative w-full" style={{ aspectRatio: `${width} / ${height}` }}>
           <div className="absolute inset-0 overflow-hidden rounded-xl border border-line-strong bg-card shadow-soft">
-            <div
-              className="absolute inset-0 transition-transform duration-500 ease-out"
-              style={{ transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`, transformOrigin: "0 0" }}
-            >
-              {image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={image}
-                  alt={`Page ${idx + 1}`}
-                  draggable={false}
-                  className="absolute inset-0 h-full w-full select-none"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-paper-2 text-sm text-ink-faint">
-                  {t("Rendering your document…", "Procesando su documento…")}
-                </div>
-              )}
-              {fields.map((f) => (
-                <FieldOverlay key={f.id} field={f} />
-              ))}
-              <Spotlight rects={holes} />
-            </div>
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={`Page ${idx + 1}`}
+                draggable={false}
+                className="absolute inset-0 h-full w-full select-none"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-paper-2 text-sm text-ink-faint">
+                {t("Rendering your document…", "Procesando su documento…")}
+              </div>
+            )}
+            {fields.map((f) => (
+              <FieldOverlay key={f.id} field={f} />
+            ))}
+            <Spotlight rects={holes} />
           </div>
-          {/* Guide card — placed by GuideBox above/below the centered focused box.
-              Keyed by step+language so it remounts and re-types on each change. */}
+          {/* Guide card — sits above/below the focused box at its real position,
+              never overlapping it. Keyed by step+language so it re-types each change. */}
           <GuideBox key={`${active?.id ?? "none"}-${lang}`} />
         </div>
       </div>
