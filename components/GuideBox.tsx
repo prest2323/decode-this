@@ -20,7 +20,7 @@ import { useDoc } from "@/lib/store";
 import { FlagChip } from "./RiskSummary";
 import { stepInsight } from "@/lib/insights";
 
-const GUIDE_W = 296;
+const GUIDE_W = 355; // 20% wider
 const GAP = 16;
 
 export default function GuideBox() {
