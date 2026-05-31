@@ -64,8 +64,7 @@ export default function DocCanvas() {
   const { doc, active, lang } = useDoc();
   const [page, setPage] = useState(0);
   const [pdf, setPdf] = useState<PdfRender | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
 
   // Jump to the page the active step lives on. Keyed on the page NUMBER, not the
   // whole `active` object: `active` is a fresh reference on every field edit, so
@@ -126,21 +125,18 @@ export default function DocCanvas() {
     };
   }, [docId]);
 
-  // The document runs on at full height; rather than zoom/crop, we scroll the
-  // active step's box to the centre of the viewport so it's never cut off.
-  const activeSpotY = active?.spotlight?.y ?? null;
-  const activeSpotH = active?.spotlight?.h ?? 0;
+  // Center the spotlight in the frame: scroll the spotlight anchor to the middle
+  // of the viewport whenever the active step (or the page render) changes.
+  const activeSpotKey = active?.spotlight ? `${active.spotlight.page}:${active.spotlight.y}` : null;
   useEffect(() => {
-    if (activeSpotY == null) return;
-    const sc = scrollRef.current;
-    const pg = pageRef.current;
-    if (!sc || !pg) return;
-    const id = requestAnimationFrame(() => {
-      const center = (activeSpotY + activeSpotH / 2) * pg.offsetHeight;
-      sc.scrollTo({ top: Math.max(0, center - sc.clientHeight / 2), behavior: "smooth" });
-    });
+    if (!activeSpotKey) return;
+    const el = anchorRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() =>
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" }),
+    );
     return () => cancelAnimationFrame(id);
-  }, [activeSpotY, activeSpotH, page, pdf]);
+  }, [activeSpotKey, page, pdf]);
 
   if (!doc) return null;
 
@@ -161,6 +157,7 @@ export default function DocCanvas() {
     active && active.spotlight && active.spotlight.page === idx
       ? active.fields.filter((f) => f.rect.page === idx).map((f) => f.rect)
       : [];
+  const spotOnPage = active?.spotlight && active.spotlight.page === idx ? active.spotlight : null;
 
   const t = (en: string, es: string) => (lang === "es" ? es : en);
 
@@ -195,8 +192,8 @@ export default function DocCanvas() {
 
       {/* The document runs on at full WIDTH — the whole form is here, nothing
           cropped. It scrolls vertically; the active box is scrolled into view. */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto p-1">
-        <div ref={pageRef} className="relative w-full" style={{ aspectRatio: `${width} / ${height}` }}>
+      <div className="min-h-0 flex-1 overflow-auto p-1">
+        <div className="relative w-full" style={{ aspectRatio: `${width} / ${height}` }}>
           <div className="absolute inset-0 overflow-hidden rounded-xl border border-line-strong bg-card shadow-soft">
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -216,6 +213,19 @@ export default function DocCanvas() {
             ))}
             <Spotlight rects={holes} />
           </div>
+          {/* Invisible anchor at the spotlight's centre — we scroll this to the
+              middle of the viewport so the focused box is centred in frame. */}
+          {spotOnPage && (
+            <div
+              ref={anchorRef}
+              aria-hidden
+              className="pointer-events-none absolute h-px w-px"
+              style={{
+                left: `${(spotOnPage.x + spotOnPage.w / 2) * 100}%`,
+                top: `${(spotOnPage.y + spotOnPage.h / 2) * 100}%`,
+              }}
+            />
+          )}
           {/* Guide card — sits above/below the focused box at its real position,
               never overlapping it. Keyed by step+language so it re-types each change. */}
           <GuideBox key={`${active?.id ?? "none"}-${lang}`} />

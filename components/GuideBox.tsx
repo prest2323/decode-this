@@ -52,20 +52,11 @@ export default function GuideBox() {
     return () => ro.disconnect();
   }, [active?.id]);
 
-  // Type the guidance out. The card is remounted per step+language (key in
-  // DocCanvas), so typed/typingDone/manual already start fresh — every setState
-  // here runs inside a timer callback, never synchronously in the effect body.
+  // Type the guidance out — ALWAYS, every time a new card appears. The card is
+  // remounted per step+language (key in DocCanvas), so typed/typingDone start fresh
+  // and this runs on each step. setState happens only inside the timer callback.
   useEffect(() => {
     if (!fullText) return;
-    const reduce =
-      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      const id = window.setTimeout(() => {
-        setTyped(fullText);
-        setTypingDone(true);
-      }, 0);
-      return () => window.clearTimeout(id);
-    }
     let i = 0;
     const id = window.setInterval(() => {
       i += 2;
@@ -76,7 +67,7 @@ export default function GuideBox() {
       } else {
         setTyped(fullText.slice(0, i));
       }
-    }, 16);
+    }, 18);
     return () => window.clearInterval(id);
   }, [fullText]);
 
