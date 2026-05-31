@@ -1,73 +1,132 @@
 "use client";
-// GuideBox — the single focused card for the ACTIVE step. Floats in the largest
-// free band beside the spotlight so it never covers the field. No step counter —
-// just a short title, one plain line, the one flag that matters, and a big
-// "Done →" button. An "Ask a question" link opens the chat (decode:open-chat).
-import { useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
+// GuideBox — the single focused card for the ACTIVE step (Aiden's component,
+// phase-2 reworked by Michael). It now:
+//   1. only ever sits ABOVE or BELOW the focused box — never over it;
+//   2. types its guidance out like it's being written, on every step change;
+//   3. reveals a one-line insight at the bottom once the text finishes;
+//   4. can be dragged anywhere by its top handle.
+// DocCanvas centers + zooms the focused box to the viewport center, so we place
+// the card relative to that center (using the same zoom factor).
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useDoc } from "@/lib/store";
 import { FlagChip } from "./RiskSummary";
+import { stepInsight } from "@/lib/insights";
 
-const GUIDE_W = 330;
-const GUIDE_H = 190;
+const GUIDE_W = 296;
+const GAP = 16;
+const ZOOM = 1.3; // must match the focus zoom in DocCanvas
 
 export default function GuideBox() {
   const { active, reqs, activeIndex, lang, next, prev, setStatus } = useDoc();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [dim, setDim] = useState({ w: 640, h: 800 });
+  const [cardH, setCardH] = useState(200);
+  const [manual, setManual] = useState<{ left: number; top: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [typingDone, setTypingDone] = useState(false);
 
+  const fullText = active ? active.guidance[lang] : "";
+  const insight = useMemo(() => stepInsight(active), [active]);
+
+  // Measure the page box (our offset parent) and our own height for placement.
   useEffect(() => {
-    const parent = containerRef.current?.parentElement;
-    if (!parent) return;
-    const ro = new ResizeObserver(() => setDim({ w: parent.offsetWidth, h: parent.offsetHeight }));
+    const el = cardRef.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+    const update = () => {
+      setDim({ w: parent.offsetWidth, h: parent.offsetHeight });
+      setCardH(el.offsetHeight);
+    };
+    const ro = new ResizeObserver(update);
     ro.observe(parent);
-    setDim({ w: parent.offsetWidth, h: parent.offsetHeight });
+    ro.observe(el);
+    update();
     return () => ro.disconnect();
-  }, [active]);
+  }, [active?.id]);
+
+  // Type the guidance out. The card is remounted per step+language (key in
+  // DocCanvas), so typed/typingDone/manual already start fresh — every setState
+  // here runs inside a timer callback, never synchronously in the effect body.
+  useEffect(() => {
+    if (!fullText) return;
+    const reduce =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      const id = window.setTimeout(() => {
+        setTyped(fullText);
+        setTypingDone(true);
+      }, 0);
+      return () => window.clearTimeout(id);
+    }
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 2;
+      if (i >= fullText.length) {
+        setTyped(fullText);
+        setTypingDone(true);
+        window.clearInterval(id);
+      } else {
+        setTyped(fullText.slice(0, i));
+      }
+    }, 16);
+    return () => window.clearInterval(id);
+  }, [fullText]);
 
   const style = useMemo<CSSProperties>(() => {
-    if (!active) return {};
+    const base: CSSProperties = { position: "absolute", width: `${GUIDE_W}px`, maxWidth: "calc(100% - 16px)" };
+    if (!active) return base;
+    const { w: W, h: H } = dim;
+    const cw = Math.min(GUIDE_W, W - 16);
+    if (manual) return { ...base, left: `${manual.left}px`, top: `${manual.top}px` };
     const spot = active.spotlight;
     if (!spot) {
-      return {
-        position: "absolute",
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, -50%)",
-        width: `${GUIDE_W}px`,
-        maxWidth: "calc(100% - 16px)",
-      };
+      return { ...base, left: `${Math.max(8, W / 2 - cw / 2)}px`, top: `${Math.max(8, H / 2 - cardH / 2)}px` };
     }
-    const { w: W, h: H } = dim;
-    const sx = spot.x * W, sy = spot.y * H, sw = spot.w * W, sh = spot.h * H;
-    const space = { right: W - (sx + sw), left: sx, bottom: H - (sy + sh), top: sy };
-    const order = (["right", "left", "bottom", "top"] as Array<keyof typeof space>).sort(
-      (a, b) => space[b] - space[a],
-    );
-    const clampTop = (v: number) => Math.max(8, Math.min(v, H - GUIDE_H - 8));
-    const clampLeft = (v: number) => Math.max(8, Math.min(v, W - GUIDE_W - 8));
+    // Focused box is centered + zoomed by DocCanvas → it sits at the viewport center.
+    const boxHalfH = (spot.h * H * ZOOM) / 2;
+    const left = Math.max(8, Math.min(W / 2 - cw / 2, W - cw - 8));
+    const below = H / 2 + boxHalfH + GAP;
+    const above = H / 2 - boxHalfH - GAP - cardH;
+    let top: number;
+    if (below + cardH <= H - 8) top = below; // prefer below the box
+    else if (above >= 8) top = above; // else above it
+    else top = Math.max(8, Math.min(below, H - cardH - 8)); // last resort: clamp
+    return { ...base, left: `${left}px`, top: `${top}px` };
+  }, [active, dim, cardH, manual]);
 
-    let pos = { left: -1, top: -1 };
-    for (const side of order) {
-      if (side === "right" && space.right >= GUIDE_W + 24) { pos = { left: sx + sw + 16, top: clampTop(sy) }; break; }
-      if (side === "left" && space.left >= GUIDE_W + 24) { pos = { left: sx - GUIDE_W - 16, top: clampTop(sy) }; break; }
-      if (side === "bottom" && space.bottom >= GUIDE_H + 24) { pos = { left: clampLeft(sx), top: sy + sh + 16 }; break; }
-      if (side === "top" && space.top >= GUIDE_H + 24) { pos = { left: clampLeft(sx), top: sy - GUIDE_H - 16 }; break; }
-    }
-    if (pos.left < 0) {
-      const best = order[0];
-      if (best === "right") pos = { left: Math.max(8, W - GUIDE_W - 8), top: clampTop(sy) };
-      else if (best === "left") pos = { left: 8, top: clampTop(sy) };
-      else if (best === "bottom") pos = { left: clampLeft(sx), top: Math.max(8, H - GUIDE_H - 8) };
-      else pos = { left: clampLeft(sx), top: 8 };
-    }
-    return {
-      position: "absolute",
-      left: `${pos.left}px`,
-      top: `${pos.top}px`,
-      width: `${GUIDE_W}px`,
-      maxWidth: "calc(100% - 16px)",
+  const onHandleDown = useCallback((e: ReactPointerEvent) => {
+    const card = cardRef.current;
+    const parent = card?.parentElement;
+    if (!card || !parent) return;
+    const cardRect = card.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+    const offX = e.clientX - cardRect.left;
+    const offY = e.clientY - cardRect.top;
+    const cw = cardRect.width;
+    const ch = cardRect.height;
+    setDragging(true);
+    const move = (ev: PointerEvent) => {
+      const left = Math.max(8, Math.min(ev.clientX - parentRect.left - offX, parentRect.width - cw - 8));
+      const top = Math.max(8, Math.min(ev.clientY - parentRect.top - offY, parentRect.height - ch - 8));
+      setManual({ left, top });
     };
-  }, [active, dim]);
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, []);
 
   if (!active) return null;
   const isLast = activeIndex >= reqs.length - 1;
@@ -75,53 +134,81 @@ export default function GuideBox() {
 
   return (
     <div
-      ref={containerRef}
+      ref={cardRef}
       style={style}
-      className="pointer-events-auto absolute z-40 rounded-2xl border border-line bg-card p-5 shadow-lift ring-1 ring-line/60 transition-all duration-300 ease-out animate-scale-in"
+      className={`pointer-events-auto absolute z-40 overflow-hidden rounded-2xl border border-line bg-card shadow-lift ring-1 ring-line/60 animate-scale-in ${
+        dragging ? "" : "transition-[left,top] duration-300 ease-out"
+      }`}
     >
-      <h3 className="font-display text-lg font-semibold leading-snug text-ink">
-        {active.title[lang]}
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{active.guidance[lang]}</p>
+      {/* Drag handle — grab the top to move the card anywhere. */}
+      <div
+        onPointerDown={onHandleDown}
+        aria-label={t("Drag to move", "Arrastrar para mover")}
+        className={`flex touch-none select-none items-center justify-center gap-1 border-b border-line/50 bg-paper-2/40 py-1 ${
+          dragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+      >
+        <span className="h-1 w-1 rounded-full bg-line-strong" />
+        <span className="h-1 w-1 rounded-full bg-line-strong" />
+        <span className="h-1 w-1 rounded-full bg-line-strong" />
+      </div>
 
-      {active.flags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {active.flags.map((f, i) => (
-            <FlagChip key={i} flag={f} lang={lang} />
-          ))}
-        </div>
-      )}
+      <div className="p-3.5 pt-2.5">
+        <h3 className="font-display text-[0.95rem] font-semibold leading-snug text-ink">{active.title[lang]}</h3>
+        <p className="mt-1.5 min-h-[1.5rem] text-[0.8rem] leading-relaxed text-ink-soft">
+          {typed}
+          {!typingDone && <span className="ml-0.5 inline-block h-[1em] w-[2px] -translate-y-[1px] animate-pulse bg-calm-2 align-middle" />}
+        </p>
 
-      <div className="mt-5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-0.5">
+        {active.flags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {active.flags.map((f, i) => (
+              <FlagChip key={i} flag={f} lang={lang} />
+            ))}
+          </div>
+        )}
+
+        {/* The step insight pops in at the bottom once the text finishes typing. */}
+        {insight && typingDone && (
+          <div className="mt-2.5 flex items-start gap-1.5 rounded-lg bg-calm-tint/70 px-2.5 py-1.5 text-[0.72rem] leading-relaxed text-calm-deep animate-fade-in">
+            <svg className="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.9 1 1 1.6h5c.1-.6.5-1.2 1-1.6A6 6 0 0 0 12 3z" />
+            </svg>
+            <span>{insight[lang]}</span>
+          </div>
+        )}
+
+        <div className="mt-3.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={prev}
+              disabled={activeIndex === 0}
+              aria-label={t("Back", "Atrás")}
+              className="rounded-lg p-1.5 text-ink-faint transition hover:bg-paper-2 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("decode:open-chat"))}
+              className="rounded-lg px-2 py-1.5 text-[0.7rem] font-medium text-calm transition hover:bg-calm-tint"
+            >
+              {t("Ask a question", "Hacer una pregunta")}
+            </button>
+          </div>
           <button
             type="button"
-            onClick={prev}
-            disabled={activeIndex === 0}
-            aria-label={t("Back", "Atrás")}
-            className="rounded-lg p-2 text-ink-faint transition hover:bg-paper-2 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            onClick={() => {
+              setStatus(active.id, "done");
+              if (!isLast) next();
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-calm px-3.5 py-1.5 text-[0.8rem] font-semibold text-paper shadow-soft transition-all duration-200 hover:bg-calm-deep hover:scale-[1.02] active:scale-95"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event("decode:open-chat"))}
-            className="rounded-lg px-2.5 py-2 text-xs font-medium text-calm transition hover:bg-calm-tint"
-          >
-            {t("Ask a question", "Hacer una pregunta")}
+            {isLast ? t("Finish", "Terminar") : t("Done", "Listo")}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setStatus(active.id, "done");
-            if (!isLast) next();
-          }}
-          className="flex items-center gap-1.5 rounded-xl bg-calm px-5 py-2.5 text-sm font-semibold text-paper shadow-soft transition-all duration-200 hover:bg-calm-deep hover:scale-[1.02] active:scale-95"
-        >
-          {isLast ? t("Finish", "Terminar") : t("Done", "Listo")}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
       </div>
     </div>
   );

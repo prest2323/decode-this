@@ -1,23 +1,32 @@
 "use client";
-// WORKSPACE — owned by Preston (Lead). No doc -> the marketing Landing; doc
-// loaded -> a calm two-column walkthrough: the checklist (the map) on the left,
-// the document + spotlight + one focused guide card in the center, and a quiet
-// "Ask" chat. No Protect column, no step counter — just one step at a time.
-import { useEffect } from "react";
+// WORKSPACE — phase-2 redesign (Michael, driving the document-page UI). No doc ->
+// the marketing Landing. Doc loaded -> a full-screen document walkthrough: a nav
+// bar with Home / Chat insight / Help tabs, a centered Guide | Overview switch
+// under it, the document filling the screen on Guide, and the details (steps,
+// health score, filled-in insights) on Overview. The page indicator lives in the
+// top-right corner of the canvas.
+import { useEffect, useState } from "react";
 import { useDoc } from "@/lib/store";
 import type { Lang } from "@/lib/types";
 import Landing from "@/components/Landing";
 import { Logo } from "@/components/Logo";
-import ChecklistPanel from "@/components/ChecklistPanel";
+import NavTabs from "@/components/NavTabs";
 import DocCanvas from "@/components/DocCanvas";
+import Overview from "@/components/Overview";
+import HelpPanel from "@/components/HelpPanel";
 import ChatWidget from "@/components/ChatWidget";
 
-export default function Page() {
-  const { doc, lang, setLang, exportAs, reset, next, prev } = useDoc();
+type View = "guide" | "overview";
 
-  // Arrow keys step through the walkthrough (ignored while typing in a field).
+export default function Page() {
+  const { doc, lang, setLang, exportAs, reset, goTo, next, prev } = useDoc();
+  const [view, setView] = useState<View>("guide");
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // Arrow keys step through the walkthrough (Guide view only; ignored while typing).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (view !== "guide") return;
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
       if (e.key === "ArrowRight") next();
@@ -25,27 +34,24 @@ export default function Page() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev]);
+  }, [next, prev, view]);
 
   if (!doc) return <Landing />;
+  const t = (en: string, es: string) => (lang === "es" ? es : en);
 
   return (
     <main className="bg-atmosphere flex h-screen flex-col">
       <header className="flex items-center gap-3 border-b border-line bg-card/80 px-4 py-2.5 backdrop-blur-xl">
         <Logo size={26} withText={false} />
-        <button
-          type="button"
-          onClick={reset}
-          className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-line-strong hover:bg-paper-2 hover:text-ink"
-        >
-          ← New
-        </button>
         <div className="min-w-0 flex-1">
-          <div className="font-display truncate text-[0.95rem] font-semibold text-ink">
-            {doc.docType[lang]}
-          </div>
+          <div className="font-display truncate text-[0.95rem] font-semibold text-ink">{doc.docType[lang]}</div>
           <div className="font-mono truncate text-xs text-ink-faint">{doc.fileName}</div>
         </div>
+        <NavTabs
+          onHome={reset}
+          onChat={() => window.dispatchEvent(new Event("decode:open-chat"))}
+          onHelp={() => setHelpOpen(true)}
+        />
         <LangToggle lang={lang} onChange={setLang} />
         <div className="hidden items-center gap-1 sm:flex">
           {(["pdf", "json", "csv"] as const).map((f) => (
@@ -61,16 +67,39 @@ export default function Page() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[300px_1fr]">
-        <aside className="hidden min-h-0 flex-col lg:flex">
-          <ChecklistPanel />
-        </aside>
-        <section className="min-h-0">
+      {/* Centered Guide | Overview switch, directly under the nav bar. */}
+      <div className="flex items-center justify-center border-b border-line bg-card/40 px-4 py-1.5">
+        <div className="inline-flex rounded-xl border border-line bg-paper-2/60 p-0.5 text-sm font-semibold">
+          {(["guide", "overview"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`rounded-lg px-5 py-1.5 transition ${
+                view === v ? "bg-card text-calm-deep shadow-soft" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {v === "guide" ? t("Guide", "Guía") : t("Overview", "Resumen")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 px-2 pb-2 pt-1.5">
+        {view === "guide" ? (
           <DocCanvas />
-        </section>
+        ) : (
+          <Overview
+            onJump={(i) => {
+              goTo(i);
+              setView("guide");
+            }}
+          />
+        )}
       </div>
 
       <ChatWidget />
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </main>
   );
 }

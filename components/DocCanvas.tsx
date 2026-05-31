@@ -61,7 +61,7 @@ function installPdfPolyfills(): void {
 }
 
 export default function DocCanvas() {
-  const { doc, active } = useDoc();
+  const { doc, active, lang } = useDoc();
   const [page, setPage] = useState(0);
   const [pdf, setPdf] = useState<PdfRender | null>(null);
 
@@ -155,64 +155,70 @@ export default function DocCanvas() {
   const txPct = (0.5 - cx * zoom) * 100;
   const tyPct = (0.5 - cy * zoom) * 100;
 
+  const t = (en: string, es: string) => (lang === "es" ? es : en);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* Pager pinned to the top-right corner of the document area. */}
       {pageCount > 1 && (
-        <div className="mb-2 flex items-center justify-center gap-3 text-sm text-ink-soft">
+        <div className="absolute right-3 top-3 z-30 flex items-center gap-1 rounded-xl border border-line bg-card/90 px-1.5 py-1 text-xs font-medium text-ink-soft shadow-soft backdrop-blur">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={idx === 0}
-            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
+            aria-label={t("Previous page", "Página anterior")}
+            className="rounded-lg p-1 transition hover:bg-paper-2 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
           >
-            ‹ Prev
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
-          <span>
-            Page {idx + 1} of {pageCount}
+          <span className="px-1 tabular-nums">
+            {t("Page", "Página")} {idx + 1} {t("of", "de")} {pageCount}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
             disabled={idx >= pageCount - 1}
-            className="rounded-lg border border-line px-2.5 py-1 transition hover:border-calm-2 hover:bg-calm-tint disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
+            aria-label={t("Next page", "Página siguiente")}
+            className="rounded-lg p-1 transition hover:bg-paper-2 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
           >
-            Next ›
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </button>
         </div>
       )}
 
-      <div className="flex flex-1 items-start justify-center overflow-auto">
-        <div
-          className="relative w-full max-w-[640px] overflow-hidden rounded-xl border border-line-strong bg-card shadow-soft"
-          style={{ aspectRatio: `${width} / ${height}` }}
-        >
-          {/* Document layer: zoom/pan to focus the active box. Inputs + spotlight
-              ride along so they stay aligned at any zoom. */}
-          <div
-            className="absolute inset-0 transition-transform duration-500 ease-out"
-            style={{ transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`, transformOrigin: "0 0" }}
-          >
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={image}
-                alt={`Page ${idx + 1}`}
-                draggable={false}
-                className="absolute inset-0 h-full w-full select-none"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-paper-2 text-sm text-ink-faint">
-                Rendering your document…
-              </div>
-            )}
-            {fields.map((f) => (
-              <FieldOverlay key={f.id} field={f} />
-            ))}
-            <Spotlight rects={holes} />
+      {/* Full-screen document: the page fills the height, centered, as big as it fits. */}
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-1">
+        <div className="relative h-full" style={{ aspectRatio: `${width} / ${height}` }}>
+          {/* Clipped viewport — the zoom/pan layer lives here so it can't spill past
+              the rounded page edge. The guide card sits OUTSIDE it (below), so it's
+              never clipped. */}
+          <div className="absolute inset-0 overflow-hidden rounded-xl border border-line-strong bg-card shadow-soft">
+            <div
+              className="absolute inset-0 transition-transform duration-500 ease-out"
+              style={{ transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`, transformOrigin: "0 0" }}
+            >
+              {image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={image}
+                  alt={`Page ${idx + 1}`}
+                  draggable={false}
+                  className="absolute inset-0 h-full w-full select-none"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-paper-2 text-sm text-ink-faint">
+                  {t("Rendering your document…", "Procesando su documento…")}
+                </div>
+              )}
+              {fields.map((f) => (
+                <FieldOverlay key={f.id} field={f} />
+              ))}
+              <Spotlight rects={holes} />
+            </div>
           </div>
-          {/* The guide-text card (Aiden's) stays un-zoomed + clickable, placed over
-              the page box so its Back/Next buttons are never clipped by the zoom. */}
-          <GuideBox />
+          {/* Guide card — placed by GuideBox above/below the centered focused box.
+              Keyed by step+language so it remounts and re-types on each change. */}
+          <GuideBox key={`${active?.id ?? "none"}-${lang}`} />
         </div>
       </div>
     </div>
