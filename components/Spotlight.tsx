@@ -8,12 +8,19 @@ import type { Rect } from "@/lib/types";
 
 export default function Spotlight({ rects }: { rects: Rect[] }) {
   const pad = 1.0; // viewBox units of breathing room around each box
-  const holes = rects.map((r) => ({
-    x: Math.max(0, r.x * 100 - pad),
-    y: Math.max(0, r.y * 100 - pad),
-    w: r.w * 100 + pad * 2,
-    h: r.h * 100 + pad * 2,
-  }));
+  const grow = 0.1; // +10% per box, so the spotlight clears the label/title text
+  const holes = rects.map((r) => {
+    const w = r.w * 100;
+    const h = r.h * 100;
+    const gx = (w * grow) / 2;
+    const gy = (h * grow) / 2;
+    return {
+      x: Math.max(0, r.x * 100 - pad - gx),
+      y: Math.max(0, r.y * 100 - pad - gy),
+      w: w + pad * 2 + gx * 2,
+      h: h + pad * 2 + gy * 2,
+    };
+  });
   return (
     <svg
       className="pointer-events-none absolute inset-0 z-30 h-full w-full"
