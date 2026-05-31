@@ -15,7 +15,7 @@ export function Logo({
     <div className="flex items-center gap-2.5">
       <Image
         src="/logo.svg"
-        alt="Decode This"
+        alt="Decode It"
         width={size}
         height={size}
         priority
@@ -26,7 +26,7 @@ export function Logo({
         <span
           className={`font-display font-semibold tracking-tight text-ink ${textClass}`}
         >
-          Decode This
+          Decode It
         </span>
       )}
     </div>

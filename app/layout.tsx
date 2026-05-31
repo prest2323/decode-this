@@ -19,7 +19,7 @@ const hanken = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Decode This — a gentler way through hard paperwork",
+  title: "Decode It — a gentler way through hard paperwork",
   description:
     "Drop in any complex document — a loan application, a benefits form — and we walk you through every step, calmly.",
 };

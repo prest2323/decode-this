@@ -124,7 +124,7 @@ export default function Landing() {
             >
               Loan applications, leases, benefits forms, citizenship papers — the
               documents that decide people&apos;s lives are also the scariest to
-              fill out. <span className="font-semibold text-ink">Decode This</span>{" "}
+              fill out. <span className="font-semibold text-ink">Decode It</span>{" "}
               turns any of them into a calm, guided, bilingual walkthrough.
             </p>
 
@@ -417,7 +417,7 @@ function Frame({ children, label }: { children: React.ReactNode; label: string }
         <span className="h-2.5 w-2.5 rounded-full bg-line-strong" />
         <span className="font-mono ml-1 text-[11px] text-ink-faint">{label}</span>
         <span className="ml-auto flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-calm-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-calm-2" /> Decode This
+          <span className="h-1.5 w-1.5 rounded-full bg-calm-2" /> Decode It
         </span>
       </div>
       <div className="p-5">{children}</div>

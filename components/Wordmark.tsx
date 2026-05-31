@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-// Brand lockup: the logo mark + the "Decode This" wordmark in Deep Forest Teal.
+// Brand lockup: the logo mark + the "Decode It" wordmark in Deep Forest Teal.
 export function Wordmark({
   size = 36,
   textClass = "text-xl",
@@ -15,7 +15,7 @@ export function Wordmark({
       {withMark && (
         <Image
           src="/logo.svg"
-          alt="Decode This"
+          alt="Decode It"
           width={size}
           height={size}
           priority
@@ -26,7 +26,7 @@ export function Wordmark({
       <span
         className={`font-display font-semibold tracking-tight text-calm ${textClass}`}
       >
-        Decode This
+        Decode It
       </span>
     </div>
   );
